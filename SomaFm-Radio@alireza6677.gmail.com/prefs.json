@@ -1,0 +1,11 @@
+ {
+    "lastChannel":{
+	"name": "Indie Pop Rocks!",
+	"link": "http://ice2.somafm.com/indiepop-32-aac",
+    "pic" : "/images/indychick.jpg",
+    "num" : 22,
+    "fav" : false
+    },
+    "favs":[],
+    "lastVol" : 0.5 
+ }

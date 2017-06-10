@@ -1,0 +1,13 @@
+{
+  "description": "Listen to SomaFm radio using Gnome",
+  "name": "SomaFm internet radio",
+  "shell-version": [
+    "3.18",
+    "3.20",
+    "3.22",
+    "3.24"
+  ],
+  "url": "http://github.com/alireza6677/somafm-radio-gnome-ext",
+  "uuid": "SomaFm-Radio@alireza6677.gmail.com",
+  "version": 1
+}
