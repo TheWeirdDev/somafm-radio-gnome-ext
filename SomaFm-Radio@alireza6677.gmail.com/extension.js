@@ -16,7 +16,7 @@ const Shell = imports.gi.Shell;
 const Channels = Extension.imports.channels;
 const Data = Extension.imports.data;
 
-// It was my first javascript experience.
+// I'm not a JS developer.
 // The code may look shitty. But it Works! :)
 
 
@@ -25,12 +25,13 @@ const Popup = new Lang.Class({
     Extends: PopupMenu.PopupBaseMenuItem,
 
     _init: function (player) {
-        this.volume = 0.5;
+        this.volume = Data.getLastVol();
         this.old_vol = 0;
 
         this.parent({
-            reactive: false,
-            can_focus: false,
+            hover: false,
+            activate: false,
+            can_focus: true,
         });
         this.player = player;
 
@@ -52,7 +53,7 @@ const Popup = new Lang.Class({
         this.setLoading(true);
 
         // Volume slider
-        this.slider = new Slider.Slider(Data.getLastVol());
+        this.slider = new Slider.Slider(this.volume);
         this.slider.connect('value-changed', Lang.bind(this, this.setVolume));
 
         this.bb.add_child(this.slider.actor);
@@ -60,9 +61,9 @@ const Popup = new Lang.Class({
         // Mute icon
         this.mute_icon = new St.Icon({
             icon_name: 'audio-volume-medium-symbolic',
-            icon_size:20,
+            icon_size: 20,
             reactive: true,
-            style:'margin-right:5px',
+            style: 'margin-right:5px',
         });
 
         this.mute_icon.connect('button-press-event', Lang.bind(this, this.setMute));
@@ -97,7 +98,7 @@ const Popup = new Lang.Class({
         let spinnerIcon = Gio.File.new_for_uri('resource:///org/gnome/shell/theme/process-working.svg');
         this.spinner = new Animation.AnimatedIcon(spinnerIcon, 16);
         this.spinner.play();
-        this.loadtxt = new St.Label({ text: "Loading..."});
+        this.loadtxt = new St.Label({ text: "Loading..." });
         this.box.add(this.loadtxt, { x_fill: false, x_align: St.Align.MIDDLE });
         this.box.add_child(this.spinner.actor);
     },
@@ -106,10 +107,16 @@ const Popup = new Lang.Class({
         this.setLoading(false);
 
         this.controlbtns = new Radio.ControlButtons(this.player, this);
-        this.box.add(this.controlbtns ,  {x_align: St.Align.MIDDLE , x_fill:false});
+        this.player.setOnError(Lang.bind(this, function () {
+            this.stopped();
+            this.err = new St.Label({ text: "--- Error ---" });
+            this.box.add(this.err, { x_fill: false, x_align: St.Align.MIDDLE });
+        }));
+
+        this.box.add(this.controlbtns, { x_align: St.Align.MIDDLE, x_fill: false });
 
         // Stream description
-        this.desc = new St.Label({ text: "SOMA FM", reactive: true , style: 'padding:5px' });
+        this.desc = new St.Label({ text: "SOMA FM", reactive: true, style: 'padding:5px' });
         this.box.add(this.desc, { x_fill: false, x_align: St.Align.MIDDLE });
 
         // Current channel
@@ -126,21 +133,21 @@ const Popup = new Lang.Class({
         // favorite button
         this.star = new St.Icon({
             icon_name: this.player.getChannel().isFav() ? 'starred-symbolic' : 'non-starred-symbolic',
-            icon_size:20,
-            reactive:true,
+            icon_size: 20,
+            reactive: true,
         });
 
         this.star.connect('button-press-event', Lang.bind(this, function () {
-            if(this.player.getChannel().isFav()){
+            if (this.player.getChannel().isFav()) {
                 this.star.set_icon_name('non-starred-symbolic');
-                favs.splice(favs.indexOf(this.player.getChannel().getNum()) ,1);
+                favs.splice(favs.indexOf(this.player.getChannel().getNum()), 1);
                 this.player.getChannel().setFav(false);
             } else {
                 this.star.set_icon_name('starred-symbolic');
                 favs.push(this.player.getChannel().getNum());
                 this.player.getChannel().setFav(true);
             }
-            Data.save(this.player.getChannel() , this.volume , favs);
+            Data.save(this.player.getChannel(), this.volume, favs);
 
             // Reload favorites
             fav_menu.menu.removeAll();
@@ -150,13 +157,13 @@ const Popup = new Lang.Class({
                 fav_menu.menu.addMenuItem(channelSubMenu);
             }
         }));
-        
+
         this.box.add(this.ch_pic, { x_fill: false, x_align: St.Align.MIDDLE });
         this.box.add(this.star, { x_fill: false, x_align: St.Align.MIDDLE });
 
         this.mixer = Volume.getMixerControl();
 
-        this.steam_id = this.mixer.connect('stream-changed', Lang.bind(this, function () {
+        this.stream_id = this.mixer.connect('stream-changed', Lang.bind(this, function () {
             for (var i = 0, c = this.mixer.get_streams(); i < c.length; i++) {
                 if (c[i].name == Radio.CLIENT_NAME) {
                     if (this.player.isPlaying()) {
@@ -166,7 +173,7 @@ const Popup = new Lang.Class({
                         this.ch.set_text(this.player.getChannel().getName());
                         break;
                     }
-                    // EXPERIMENTAL
+                    //EXPERIMENTAL
                     //if(!this.slider._dragging)
                     //  this.slider.setValue(c[i].volume / 65536);
                 }
@@ -174,6 +181,12 @@ const Popup = new Lang.Class({
         })
         );
 
+    },
+    stopped: function () {
+        this.controlbtns.icon.set_icon_name('gtk-media-play');
+        this.controlbtns.playing = false;
+        this.setLoading(false);
+        this.desc.set_text('SOMA FM');
     },
     channelChanged: function () {
         this.controlbtns.icon.set_icon_name('gtk-media-stop');
@@ -185,7 +198,7 @@ const Popup = new Lang.Class({
         this.ch_pic.set_gicon(Gio.icon_new_for_string(Extension.path + this.player.getChannel().getPic()));
         this.cfav = this.player.getChannel().isFav();
         this.star.set_icon_name(this.cfav ? 'starred-symbolic' : 'non-starred-symbolic');
-        Data.save(this.player.getChannel() , this.volume , favs);
+        Data.save(this.player.getChannel(), this.volume, favs);
     },
     disconnectAll: function () {
         this.mixer.disconnect(this.stream_id);
@@ -194,7 +207,7 @@ const Popup = new Lang.Class({
         this.player.setVolume(vol);
         this.volume = vol;
         this.setVolIcon(vol);
-        Data.save(this.player.getChannel() , this.volume , favs);
+        Data.save(this.player.getChannel(), this.volume, favs);
 
     },
     setVolIcon: function (vol) {
@@ -216,12 +229,12 @@ const Button = new Lang.Class({
 
     _init: function (player) {
         this.parent(0.0, "SomaFm");
-        
+
         let box = new St.BoxLayout({
             style_class: 'panel-status-menu-box'
         });
         let icon = new St.Icon({
-              gicon: Gio.icon_new_for_string(Extension.path + '/radio-symbolic.svg'),
+            gicon: Gio.icon_new_for_string(Extension.path + '/radio-symbolic.svg'),
             style_class: 'system-status-icon',
         });
         box.add_actor(icon);
@@ -264,7 +277,7 @@ function enable() {
     player.setVolume(Data.getLastVol());
 
     favs = Data.getFavs();
-    if(favs == null)
+    if (favs == null)
         favs = [];
 
     button = new Button(player);

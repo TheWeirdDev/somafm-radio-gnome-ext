@@ -24,7 +24,7 @@ const ControlButtons = new Lang.Class({
             style_class: 'icon',
             icon_name: 'gtk-media-previous',
             reactive: true,
-            icon_size:25,
+            icon_size: 25,
         });
 
         this.icon = new St.Icon({
@@ -37,9 +37,9 @@ const ControlButtons = new Lang.Class({
             style_class: 'icon',
             icon_name: 'gtk-media-next',
             reactive: true,
-            icon_size:25,
+            icon_size: 25,
         });
-        
+
         this.add_child(this.prev);
         this.add_child(this.icon);
         this.add_child(this.next);
@@ -47,7 +47,7 @@ const ControlButtons = new Lang.Class({
         this.player = player;
         this.playing = false;
         this.pr = pr;
-        
+
         this.next.connect('button-press-event', Lang.bind(this, function () {
             this.player.stop();
             this.player.next();
@@ -55,7 +55,7 @@ const ControlButtons = new Lang.Class({
             this.pr.channelChanged();
         }));
 
-       this.prev.connect('button-press-event', Lang.bind(this, function () {
+        this.prev.connect('button-press-event', Lang.bind(this, function () {
             this.player.stop();
             this.player.prev();
             this.player.play();
@@ -71,7 +71,10 @@ const ControlButtons = new Lang.Class({
             } else {
                 this.player.play();
                 this.icon.set_icon_name('gtk-media-stop');
+                this.pr.setLoading(false);
                 this.pr.setLoading(true);
+                if (this.pr.err)
+                    this.pr.err.destroy();
             }
 
             this.playing = !this.playing;
@@ -88,12 +91,22 @@ const RadioPlayer = new Lang.Class({
         this.playbin = Gst.ElementFactory.make("playbin", "somafm");
         this.playbin.set_property("uri", channel.getLink());
         this.sink = Gst.ElementFactory.make("pulsesink", "sink");
+        // Using 'stream-changed' listener is better than checking the description tag :|  (extension.js:165)
         // Set the client name, so i can find my stream in active streams
-        // Using 'stream-changed' listener is much better than checking the description tag every single second :|
-        this.sink.set_property('client-name' , CLIENT_NAME);
+        this.sink.set_property('client-name', CLIENT_NAME);
         this.playbin.set_property("audio-sink", this.sink);
         this.channel = channel;
         this.setVolume(DEFAULT_VOLUME);
+        this.tag = '';
+
+        let bus = this.playbin.get_bus();
+        bus.add_signal_watch();
+        bus.connect("message", Lang.bind(this, function (bus, msg) {
+            if (msg != null)
+                this._onMessageReceived(msg);
+        }));
+
+
     },
 
     play: function () {
@@ -101,11 +114,14 @@ const RadioPlayer = new Lang.Class({
         this.playing = true;
     },
 
-    get:function(){
+    get: function () {
         return this.sink.get_property()
     },
+    setOnError: function (onError) {
+        this.onError = onError;
+    },
 
-    setMute: function(mute){
+    setMute: function (mute) {
         this.playbin.set_property("mute", mute);
     },
 
@@ -114,9 +130,9 @@ const RadioPlayer = new Lang.Class({
         this.playing = false;
     },
 
-    next: function (){
+    next: function () {
         num = this.channel.getNum();
-        if(num >= Channels.channels.length - 1)
+        if (num >= Channels.channels.length - 1)
             num = 0;
         else
             num += 1;
@@ -124,9 +140,9 @@ const RadioPlayer = new Lang.Class({
         this.setChannel(Channels.getChannel(num));
     },
 
-    prev: function (){
+    prev: function () {
         num = this.channel.getNum();
-        if(num <= 0)
+        if (num <= 0)
             num = Channels.channels.length - 1;
         else
             num -= 1;
@@ -149,6 +165,33 @@ const RadioPlayer = new Lang.Class({
     isPlaying: function () {
         return this.playing;
     },
+    getTag: function () {
+        return this.tag;
+    },
+    _onMessageReceived: function (msg) {
+        switch (msg.type) {
 
+            case Gst.MessageType.TAG:
+                let tagList = msg.parse_tag();
+                let tmp = tagList.get_string('title');
+
+                tag = tmp[1];
+                this.tag = tag;
+              //  global.log(tag);
+                break;
+            case Gst.MessageType.ERROR:
+                this.stop();
+                this.onError();
+                break;
+            case Gst.MessageType.STATE_CHANGED:
+                break;
+            case Gst.MessageType.EOS:
+                this.stop();
+                this.onError();
+                break;
+            default:
+                break;
+        }
+    },
 
 })

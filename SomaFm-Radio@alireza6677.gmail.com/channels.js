@@ -40,7 +40,7 @@ const channels =
 { name: "Mission Control",          link: "http://ice2.somafm.com/missioncontrol-32-aac",     pic: "/images/missioncontrol.jpg",    num:30},
 { name: "SF 10-33",                 link: "http://ice2.somafm.com/sf1033-32-aac",             pic: "/images/sf1033.png",            num:31},
 { name: "Earwaves",                 link: "http://ice2.somafm.com/earwaves-32-aac",           pic: "/images/earwaves.jpg",          num:32},
-]
+];
 
 const Channel = new Lang.Class({
     Name: 'Channel',
@@ -51,7 +51,6 @@ const Channel = new Lang.Class({
         this.pic = pic;
         this.num = num;
         this.fav = fav;
-        this._playing = false;
     },
     getName: function () {
         return this.name;
@@ -71,12 +70,7 @@ const Channel = new Lang.Class({
     setFav: function (f){
         this.fav = f;
     },
-    isPlaying: function () {
-        return this._playing;
-    },
-    setPlaying: function (pl) {
-        this._playing = pl;
-    },
+
 });
 
 const ChannelBox = new Lang.Class({
@@ -129,7 +123,7 @@ function getFavChannels() {
     let array = [];
     channels.forEach(function (item, index) {
         if(Data.isFav(item.num))
-            array.push(new Channel(item.name, item.link, item.pic, item.num , Data.isFav(item.num)));
+            array.push(new Channel(item.name, item.link, item.pic, item.num , true));
     });
     return array;
 }
