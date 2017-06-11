@@ -113,10 +113,6 @@ const RadioPlayer = new Lang.Class({
         this.playbin.set_state(Gst.State.PLAYING);
         this.playing = true;
     },
-
-    get: function () {
-        return this.sink.get_property()
-    },
     setOnError: function (onError) {
         this.onError = onError;
     },
