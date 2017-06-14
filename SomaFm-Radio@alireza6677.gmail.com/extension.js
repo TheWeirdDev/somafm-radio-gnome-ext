@@ -150,12 +150,7 @@ const Popup = new Lang.Class({
             Data.save(this.player.getChannel(), this.volume, favs);
 
             // Reload favorites
-            fav_menu.menu.removeAll();
-            var chs = Channels.getFavChannels();
-            for (var i = 0; i < chs.length; i++) {
-                let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
-                fav_menu.menu.addMenuItem(channelSubMenu);
-            }
+            reloadFavsMenu();
         }));
 
         this.box.add(this.ch_pic, { x_fill: false, x_align: St.Align.MIDDLE });
@@ -247,11 +242,8 @@ const Button = new Lang.Class({
 
         fav_menu = new PopupMenu.PopupSubMenuMenuItem('Favorites');
         this.menu.addMenuItem(fav_menu);
-        var chs = Channels.getFavChannels();
-        for (var i = 0; i < chs.length; i++) {
-            let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
-            fav_menu.menu.addMenuItem(channelSubMenu);
-        }
+
+        reloadFavsMenu();
 
         let channelsMenu = new PopupMenu.PopupSubMenuMenuItem('Channels');
         this.menu.addMenuItem(channelsMenu);
@@ -262,6 +254,24 @@ const Button = new Lang.Class({
         }
     },
 });
+
+function reloadFavsMenu() {
+    if(fav_menu == null)
+        return;
+        
+    var chs = Channels.getFavChannels();
+    fav_menu.menu.removeAll();
+    if (chs.length > 0) {
+        for (var i = 0; i < chs.length; i++) {
+            let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
+            fav_menu.menu.addMenuItem(channelSubMenu);
+        }
+    } else {
+        var emptymenu = new PopupMenu.PopupBaseMenuItem({ reactive: false });
+        emptymenu.actor.add(new St.Label({ text: "Empty" }));
+        fav_menu.menu.addMenuItem(emptymenu);
+    }
+}
 
 function init() {
 }
@@ -290,5 +300,4 @@ function disable() {
     popup.destroy();
     button.destroy();
     favs = null;
-    fav_menu.destroy();
 }

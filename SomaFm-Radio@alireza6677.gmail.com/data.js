@@ -31,9 +31,7 @@ function load(){
 }
 
 function getLastChannel(){
-    var data = load();
-    var ch = data.lastChannel;
-    return new Channels.Channel(ch.name , ch.link , ch.pic, ch.num , ch.fav);
+    return Channels.getChannel(load().lastChannel);
 }
 
 function getLastVol(){
@@ -76,25 +74,19 @@ function save(lastChannel , lastVol , favs) {
     let file = Gio.file_new_for_path(filepath);
     let raw = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
     let out = Gio.BufferedOutputStream.new_sized(raw, 4096);
-    Shell.write_string_to_stream(out, "{ \"lastChannel\":");
-    Shell.write_string_to_stream(out, JSON.stringify({
-        name: lastChannel.getName(),
-        link: lastChannel.getLink(),
-        pic:  lastChannel.getPic(),
-        num:  lastChannel.getNum(),
-        fav:  lastChannel.isFav(),
-    }, null, "\t"));
+    Shell.write_string_to_stream(out, "{\n\t\"lastChannel\":" + lastChannel.getNum() + ",\n");
 
-    Shell.write_string_to_stream(out, ",\n \"favs\":");
+    Shell.write_string_to_stream(out, "\t\"favs\":");
     if(favs != null && favs.length > 0){
         Shell.write_string_to_stream(out, JSON.stringify(favs, null, "\t"));
+		Shell.write_string_to_stream(out,",\n");
     }else{
         // If array is empty, write '[]' instead 
-        Shell.write_string_to_stream(out,"[]");
+        Shell.write_string_to_stream(out,"[],\n");
     }
 
-    Shell.write_string_to_stream(out, ", \"lastVol\":" + lastVol);
-    Shell.write_string_to_stream(out, "\n}");
+    Shell.write_string_to_stream(out, "\t\"lastVol\":" + lastVol.toFixed(2) + "\n");
+    Shell.write_string_to_stream(out, "}\n");
     out.close(null);
 
 }

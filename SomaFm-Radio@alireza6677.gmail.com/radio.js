@@ -105,7 +105,7 @@ const RadioPlayer = new Lang.Class({
             if (msg != null)
                 this._onMessageReceived(msg);
         }));
-
+        this.onError = null;
 
     },
 
@@ -170,21 +170,21 @@ const RadioPlayer = new Lang.Class({
             case Gst.MessageType.TAG:
                 let tagList = msg.parse_tag();
                 let tmp = tagList.get_string('title');
-
-                tag = tmp[1];
+                var tag = tmp[1];
                 this.tag = tag;
-              //  global.log(tag);
                 break;
-            case Gst.MessageType.ERROR:
-                this.stop();
-                this.onError();
-                break;
+
             case Gst.MessageType.STATE_CHANGED:
                 break;
+
+            // Both should do the same thing
             case Gst.MessageType.EOS:
+            case Gst.MessageType.ERROR:
                 this.stop();
-                this.onError();
+                if(this.onError != null)
+                    this.onError();
                 break;
+
             default:
                 break;
         }
