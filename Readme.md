@@ -6,8 +6,11 @@ Listen to soma fm free internet radio using gnome shell
 
 # How to install
 
-1. Install from [gnome extension website](https://extensions.gnome.org/extension/1237/somafm-internet-radio/)
-2. Install from this repo:
+Option 1:
+* Install from [gnome extension website](https://extensions.gnome.org/extension/1237/somafm-internet-radio/)
+
+Option 2:
+* Install from this repo:
 
 ```bash
 git clone 'http://github.com/alireza6677/somafm-radio-gnome-ext'
