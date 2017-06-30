@@ -1,6 +1,7 @@
 # SomaFM Gnome Extension
 
 Listen to soma fm free internet radio using gnome shell
+
 ![screenshot](https://extensions.gnome.org/extension-data/screenshots/screenshot_1237_5yJIa4m.png)
 
 # How to install
