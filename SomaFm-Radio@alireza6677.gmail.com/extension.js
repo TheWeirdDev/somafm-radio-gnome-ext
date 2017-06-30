@@ -11,11 +11,10 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Radio = Extension.imports.radio;
 const Slider = imports.ui.slider;
-const Volume = imports.ui.status.volume;
-const Shell = imports.gi.Shell;
+//const Volume = imports.ui.status.volume;
 const Channels = Extension.imports.channels;
 const Data = Extension.imports.data;
-
+const Pango = imports.gi.Pango;
 // I'm not a JS developer.
 // The code may look shitty. But it Works! :)
 
@@ -116,7 +115,9 @@ const Popup = new Lang.Class({
         this.box.add(this.controlbtns, { x_align: St.Align.MIDDLE, x_fill: false });
 
         // Stream description
-        this.desc = new St.Label({ text: "SOMA FM", reactive: true, style: 'padding:5px' });
+        this.desc = new St.Label({ text: "Soma FM", reactive: true, style: 'padding:5px' });
+        this.desc.clutter_text.line_wrap = true;
+
         this.box.add(this.desc, { x_fill: false, x_align: St.Align.MIDDLE });
 
         // Current channel
@@ -156,32 +157,39 @@ const Popup = new Lang.Class({
         this.box.add(this.ch_pic, { x_fill: false, x_align: St.Align.MIDDLE });
         this.box.add(this.star, { x_fill: false, x_align: St.Align.MIDDLE });
 
-        this.mixer = Volume.getMixerControl();
+        // Ok, Ok, OOOKKKKKK. This one is better
+        this.player.setOnTagChanged(Lang.bind(this, function(){
+            this.desc.set_text(this.player.getTag());
+            this.setLoading(false);
+        }));
 
-        this.stream_id = this.mixer.connect('stream-changed', Lang.bind(this, function () {
-            for (var i = 0, c = this.mixer.get_streams(); i < c.length; i++) {
-                if (c[i].name == Radio.CLIENT_NAME) {
-                    if (this.player.isPlaying()) {
-                        this.desc.set_text(c[i].description);
-                        if (c[i].description != 'pulsesink probe')
-                            this.setLoading(false);
-                        this.ch.set_text(this.player.getChannel().getName());
-                        break;
-                    }
-                    //EXPERIMENTAL
-                    //if(!this.slider._dragging)
-                    //  this.slider.setValue(c[i].volume / 65536);
-                }
-            }
-        })
-        );
+        // This piece of code is not compatible with gnome 3.18 and before that. I'm commenting it out. It may be useful later
+        //
+        // this.mixer = Volume.getMixerControl();
+        // this.stream_id = this.mixer.connect('stream-changed', Lang.bind(this, function () {
+        //     for (var i = 0, c = this.mixer.get_streams(); i < c.length; i++) {
+        //         if (c[i].name == Radio.CLIENT_NAME) {
+        //             if (this.player.isPlaying()) {
+        //                 this.desc.set_text(c[i].description);
+        //                 if (c[i].description != 'pulsesink probe')
+        //                     this.setLoading(false);
+        //                 this.ch.set_text(this.player.getChannel().getName());
+        //                 break;
+        //             }
+        //             //EXPERIMENTAL
+        //             //if(!this.slider._dragging)
+        //             //  this.slider.setValue(c[i].volume / 65536);
+        //         }
+        //     }
+        // })
+        // );
 
     },
     stopped: function () {
         this.controlbtns.icon.set_icon_name('gtk-media-play');
         this.controlbtns.playing = false;
         this.setLoading(false);
-        this.desc.set_text('SOMA FM');
+        this.desc.set_text('Soma FM');
     },
     channelChanged: function () {
         this.controlbtns.icon.set_icon_name('gtk-media-stop');
@@ -189,7 +197,7 @@ const Popup = new Lang.Class({
         this.setLoading(false);
         this.setLoading(true);
         this.ch.set_text(this.player.getChannel().getName());
-        this.desc.set_text('SOMA FM');
+        this.desc.set_text('Soma FM');
         this.ch_pic.set_gicon(Gio.icon_new_for_string(Extension.path + this.player.getChannel().getPic()));
         this.cfav = this.player.getChannel().isFav();
         this.star.set_icon_name(this.cfav ? 'starred-symbolic' : 'non-starred-symbolic');

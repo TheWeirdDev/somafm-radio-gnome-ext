@@ -67,7 +67,7 @@ const ControlButtons = new Lang.Class({
                 this.player.stop();
                 this.icon.set_icon_name('gtk-media-play');
                 this.pr.setLoading(false);
-                this.pr.desc.set_text('SOMA FM');
+                this.pr.desc.set_text('Soma FM');
             } else {
                 this.player.play();
                 this.icon.set_icon_name('gtk-media-stop');
@@ -91,13 +91,12 @@ const RadioPlayer = new Lang.Class({
         this.playbin = Gst.ElementFactory.make("playbin", "somafm");
         this.playbin.set_property("uri", channel.getLink());
         this.sink = Gst.ElementFactory.make("pulsesink", "sink");
-        // Using 'stream-changed' listener is better than checking the description tag :|  (extension.js:165)
-        // Set the client name, so i can find my stream in active streams
+
         this.sink.set_property('client-name', CLIENT_NAME);
         this.playbin.set_property("audio-sink", this.sink);
         this.channel = channel;
         this.setVolume(DEFAULT_VOLUME);
-        this.tag = '';
+        this.tag = 'Soma FM';
 
         let bus = this.playbin.get_bus();
         bus.add_signal_watch();
@@ -106,6 +105,7 @@ const RadioPlayer = new Lang.Class({
                 this._onMessageReceived(msg);
         }));
         this.onError = null;
+        this.onTagChanged= null;
 
     },
 
@@ -117,6 +117,10 @@ const RadioPlayer = new Lang.Class({
         this.onError = onError;
     },
 
+    setOnTagChanged: function (onTagChanged) {
+        this.onTagChanged = onTagChanged;
+    },
+
     setMute: function (mute) {
         this.playbin.set_property("mute", mute);
     },
@@ -124,10 +128,11 @@ const RadioPlayer = new Lang.Class({
     stop: function () {
         this.playbin.set_state(Gst.State.NULL);
         this.playing = false;
+        this.tag = 'Soma FM';
     },
 
     next: function () {
-        num = this.channel.getNum();
+        var num = this.channel.getNum();
         if (num >= Channels.channels.length - 1)
             num = 0;
         else
@@ -137,7 +142,7 @@ const RadioPlayer = new Lang.Class({
     },
 
     prev: function () {
-        num = this.channel.getNum();
+        var num = this.channel.getNum();
         if (num <= 0)
             num = Channels.channels.length - 1;
         else
@@ -166,15 +171,18 @@ const RadioPlayer = new Lang.Class({
     },
     _onMessageReceived: function (msg) {
         switch (msg.type) {
-
             case Gst.MessageType.TAG:
                 let tagList = msg.parse_tag();
                 let tmp = tagList.get_string('title');
                 var tag = tmp[1];
                 this.tag = tag;
+                if(this.onTagChanged != null)
+                    this.onTagChanged();
                 break;
 
-            case Gst.MessageType.STATE_CHANGED:
+            case Gst.MessageType.STREAM_START:
+                if(this.onTagChanged != null)
+                    this.onTagChanged();
                 break;
 
             // Both should do the same thing
@@ -184,7 +192,6 @@ const RadioPlayer = new Lang.Class({
                 if(this.onError != null)
                     this.onError();
                 break;
-
             default:
                 break;
         }
