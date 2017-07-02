@@ -15,7 +15,7 @@ Option 2:
 ```bash
 git clone 'http://github.com/alireza6677/somafm-radio-gnome-ext'
 cd somafm-radio-gnome-ext
-cp -r 'SomaFm-Radio@alireza6677.gmail.com' '~/.local/share/gnome-shell/extensions/' 
+cp -r 'SomaFm-Radio@alireza6677.gmail.com' ~/.local/share/gnome-shell/extensions/ 
 ```
 Restart gnome-shell by pressing Alt+F2 then type r and press enter.
 then enable it in gnome-tweak-tools
