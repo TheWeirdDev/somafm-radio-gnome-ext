@@ -22,20 +22,20 @@ const ControlButtons = new Lang.Class({
 
         this.prev = new St.Icon({
             style_class: 'icon',
-            icon_name: 'gtk-media-previous',
+            icon_name: 'media-skip-backward',
             reactive: true,
             icon_size: 25,
         });
 
         this.icon = new St.Icon({
             style_class: 'icon',
-            icon_name: 'gtk-media-play',
+            icon_name: 'media-playback-start',
             reactive: true,
         });
 
         this.next = new St.Icon({
             style_class: 'icon',
-            icon_name: 'gtk-media-next',
+            icon_name: 'media-skip-forward',
             reactive: true,
             icon_size: 25,
         });
@@ -65,12 +65,12 @@ const ControlButtons = new Lang.Class({
         this.icon.connect('button-press-event', Lang.bind(this, function () {
             if (this.playing) {
                 this.player.stop();
-                this.icon.set_icon_name('gtk-media-play');
+                this.icon.set_icon_name('media-playback-start');
                 this.pr.setLoading(false);
                 this.pr.desc.set_text('Soma FM');
             } else {
                 this.player.play();
-                this.icon.set_icon_name('gtk-media-stop');
+                this.icon.set_icon_name('media-playback-stop');
                 this.pr.setLoading(false);
                 this.pr.setLoading(true);
                 if (this.pr.err)
