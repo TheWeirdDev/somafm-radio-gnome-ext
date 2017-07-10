@@ -29,7 +29,7 @@ const ControlButtons = new Lang.Class({
 
         this.icon = new St.Icon({
             style_class: 'icon',
-            icon_name: 'media-playback-start',
+            icon_name: 'media-playback-start-symbolic',
             reactive: true,
         });
 
@@ -65,15 +65,15 @@ const ControlButtons = new Lang.Class({
         this.icon.connect('button-press-event', Lang.bind(this, function () {
             if (this.playing) {
                 this.player.stop();
-                this.icon.set_icon_name('media-playback-start');
+                this.icon.set_icon_name('media-playback-start-symbolic');
                 this.pr.setLoading(false);
                 this.pr.desc.set_text('Soma FM');
             } else {
                 this.player.play();
-                this.icon.set_icon_name('media-playback-stop');
+                this.icon.set_icon_name('media-playback-stop-symbolic');
                 this.pr.setLoading(false);
                 this.pr.setLoading(true);
-                if (this.pr.err)
+                if (this.pr.err != null)
                     this.pr.err.destroy();
             }
 

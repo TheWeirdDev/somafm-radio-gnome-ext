@@ -115,8 +115,10 @@ const Popup = new Lang.Class({
         this.box.add(this.controlbtns, { x_align: St.Align.MIDDLE, x_fill: false });
 
         // Stream description
-        this.desc = new St.Label({ text: "Soma FM", reactive: true, style: 'padding:5px' });
+        this.desc = new St.Label({ text:"Soma FM" , style: 'padding:5px' });
         this.desc.clutter_text.line_wrap = true;
+        this.desc.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+        this.desc.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
         this.box.add(this.desc, { x_fill: false, x_align: St.Align.MIDDLE });
 
@@ -157,9 +159,11 @@ const Popup = new Lang.Class({
         this.box.add(this.ch_pic, { x_fill: false, x_align: St.Align.MIDDLE });
         this.box.add(this.star, { x_fill: false, x_align: St.Align.MIDDLE });
 
-        // Ok, Ok, OOOKKKKKK. This one is better
+        // This listener may be still buggy. 
         this.player.setOnTagChanged(Lang.bind(this, function(){
-            this.desc.set_text(this.player.getTag());
+            var tag = this.player.getTag();
+            if(tag == null) tag = 'Soma FM';
+            this.desc.set_text(tag);
             this.setLoading(false);
         }));
 
@@ -186,13 +190,13 @@ const Popup = new Lang.Class({
 
     },
     stopped: function () {
-        this.controlbtns.icon.set_icon_name('media-playback-start');
+        this.controlbtns.icon.set_icon_name('media-playback-start-symbolic');
         this.controlbtns.playing = false;
         this.setLoading(false);
         this.desc.set_text('Soma FM');
     },
     channelChanged: function () {
-        this.controlbtns.icon.set_icon_name('media-playback-stop');
+        this.controlbtns.icon.set_icon_name('media-playback-stop-symbolic');
         this.controlbtns.playing = true;
         this.setLoading(false);
         this.setLoading(true);
