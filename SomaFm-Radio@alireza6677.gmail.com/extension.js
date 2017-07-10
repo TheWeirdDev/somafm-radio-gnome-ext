@@ -186,13 +186,13 @@ const Popup = new Lang.Class({
 
     },
     stopped: function () {
-        this.controlbtns.icon.set_icon_name('gtk-media-play');
+        this.controlbtns.icon.set_icon_name('media-playback-start');
         this.controlbtns.playing = false;
         this.setLoading(false);
         this.desc.set_text('Soma FM');
     },
     channelChanged: function () {
-        this.controlbtns.icon.set_icon_name('gtk-media-stop');
+        this.controlbtns.icon.set_icon_name('media-playback-stop');
         this.controlbtns.playing = true;
         this.setLoading(false);
         this.setLoading(true);
