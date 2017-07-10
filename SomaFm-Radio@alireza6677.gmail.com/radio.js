@@ -22,7 +22,7 @@ const ControlButtons = new Lang.Class({
 
         this.prev = new St.Icon({
             style_class: 'icon',
-            icon_name: 'media-skip-backward',
+            icon_name: 'media-skip-backward-symbolic',
             reactive: true,
             icon_size: 25,
         });
@@ -35,7 +35,7 @@ const ControlButtons = new Lang.Class({
 
         this.next = new St.Icon({
             style_class: 'icon',
-            icon_name: 'media-skip-forward',
+            icon_name: 'media-skip-forward-symbolic',
             reactive: true,
             icon_size: 25,
         });
