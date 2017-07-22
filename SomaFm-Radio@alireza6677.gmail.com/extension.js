@@ -207,9 +207,9 @@ const Popup = new Lang.Class({
         this.star.set_icon_name(this.cfav ? 'starred-symbolic' : 'non-starred-symbolic');
         Data.save(this.player.getChannel(), this.volume, favs);
     },
-    disconnectAll: function () {
-        this.mixer.disconnect(this.stream_id);
-    },
+    // disconnectAll: function () {
+    //     this.mixer.disconnect(this.stream_id);
+    // },
     setVolume: function (slider, vol, property) {
         this.player.setVolume(vol);
         this.volume = vol;
@@ -307,7 +307,7 @@ function enable() {
 }
 
 function disable() {
-    popup.disconnectAll();
+    //popup.disconnectAll();
     player.stop();
     popup.destroy();
     button.destroy();
