@@ -95,8 +95,8 @@ const ChannelBox = new Lang.Class({
             icon_size:60,
         });
 
-        box2 = new St.BoxLayout({ vertical: false });
-        label1 = new St.Label({ text: channel.getName() });
+        let box2 = new St.BoxLayout({ vertical: false });
+        let label1 = new St.Label({ text: channel.getName() });
         this.vbox.add_child(icon2);
         this.vbox.add_child(box2);
         box2.add(label1, { y_fill: false, y_align: St.Align.MIDDLE });
@@ -129,6 +129,6 @@ function getFavChannels() {
 }
 
 function getChannel(index) {
-    var item = channels[index];
+    let item = channels[index];
     return new Channel(item.name, item.link, item.pic , item.num , Data.isFav(item.num));
 }

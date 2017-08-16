@@ -132,7 +132,7 @@ const RadioPlayer = new Lang.Class({
     },
 
     next: function () {
-        var num = this.channel.getNum();
+        let num = this.channel.getNum();
         if (num >= Channels.channels.length - 1)
             num = 0;
         else
@@ -142,7 +142,7 @@ const RadioPlayer = new Lang.Class({
     },
 
     prev: function () {
-        var num = this.channel.getNum();
+        let num = this.channel.getNum();
         if (num <= 0)
             num = Channels.channels.length - 1;
         else
@@ -174,7 +174,7 @@ const RadioPlayer = new Lang.Class({
             case Gst.MessageType.TAG:
                 let tagList = msg.parse_tag();
                 let tmp = tagList.get_string('title');
-                var tag = tmp[1];
+                let tag = tmp[1];
                 this.tag = tag;
                 if(this.onTagChanged != null)
                     this.onTagChanged();

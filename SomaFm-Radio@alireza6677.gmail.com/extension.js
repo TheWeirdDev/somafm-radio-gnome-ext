@@ -71,6 +71,7 @@ const Popup = new Lang.Class({
         this.volBox.add_child(this.bb);
         this.box.add_child(this.volBox);
 
+        this.err = new St.Label({ text: "--- Error ---" });
         this.createUi();
     },
     setMute: function () {
@@ -102,14 +103,23 @@ const Popup = new Lang.Class({
         this.box.add_child(this.spinner.actor);
     },
 
+    setError: function (state) {
+        if (!state) {
+            this.err.destroy();
+            return;
+        }
+        this.stopped();
+        this.err = new St.Label({ text: "--- Error ---" });
+        this.box.add(this.err, { x_fill: false, x_align: St.Align.MIDDLE });
+    },
+
     createUi: function () {
         this.setLoading(false);
 
         this.controlbtns = new Radio.ControlButtons(this.player, this);
         this.player.setOnError(Lang.bind(this, function () {
-            this.stopped();
-            this.err = new St.Label({ text: "--- Error ---" });
-            this.box.add(this.err, { x_fill: false, x_align: St.Align.MIDDLE });
+            this.setError(false);
+            this.setError(true);
         }));
 
         this.box.add(this.controlbtns, { x_align: St.Align.MIDDLE, x_fill: false });
@@ -161,7 +171,7 @@ const Popup = new Lang.Class({
 
         // This listener may be still buggy. 
         this.player.setOnTagChanged(Lang.bind(this, function(){
-            var tag = this.player.getTag();
+            let tag = this.player.getTag();
             if(tag == null) tag = 'Soma FM';
             this.desc.set_text(tag);
             this.setLoading(false);
@@ -259,8 +269,8 @@ const Button = new Lang.Class({
 
         let channelsMenu = new PopupMenu.PopupSubMenuMenuItem('Channels');
         this.menu.addMenuItem(channelsMenu);
-        var chs = Channels.getChannels();
-        for (var i = 0; i < chs.length; i++) {
+        let chs = Channels.getChannels();
+        for (let i = 0; i < chs.length; i++) {
             let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
             channelsMenu.menu.addMenuItem(channelSubMenu);
         }
@@ -271,15 +281,15 @@ function reloadFavsMenu() {
     if(fav_menu == null)
         return;
         
-    var chs = Channels.getFavChannels();
+    let chs = Channels.getFavChannels();
     fav_menu.menu.removeAll();
     if (chs.length > 0) {
-        for (var i = 0; i < chs.length; i++) {
+        for (let i = 0; i < chs.length; i++) {
             let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
             fav_menu.menu.addMenuItem(channelSubMenu);
         }
     } else {
-        var emptymenu = new PopupMenu.PopupBaseMenuItem({ reactive: false });
+        let emptymenu = new PopupMenu.PopupBaseMenuItem({ reactive: false });
         emptymenu.actor.add(new St.Label({ text: "Empty" }));
         fav_menu.menu.addMenuItem(emptymenu);
     }
