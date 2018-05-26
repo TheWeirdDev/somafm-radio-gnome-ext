@@ -36,10 +36,8 @@ const channels =
 { name: "Doomed",                   link: "http://ice3.somafm.com/doomed-32-aac",             pic: "/images/doomed.png",            num:26},
 { name: "Dub Step Beyond",          link: "http://ice3.somafm.com/dubstep-32-aac",            pic: "/images/dubstep.png",           num:27},
 { name: "Black Rock FM",            link: "http://ice3.somafm.com/brfm-32-aac",               pic: "/images/1023brc.jpg",           num:28},
-{ name: "The Silent Channel",       link: "http://ice3.somafm.com/silent-32-aac",             pic: "/images/silent.jpg",            num:29},
 { name: "Mission Control",          link: "http://ice3.somafm.com/missioncontrol-32-aac",     pic: "/images/missioncontrol.jpg",    num:30},
 { name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-32-aac",             pic: "/images/sf1033.png",            num:31},
-{ name: "Earwaves",                 link: "http://ice3.somafm.com/earwaves-32-aac",           pic: "/images/earwaves.jpg",          num:32},
 ];
 
 const Channel = new Lang.Class({
