@@ -7,9 +7,12 @@
     "3.18", 
     "3.20", 
     "3.22", 
-    "3.24"
+    "3.24",
+    "3.26",
+    "3.28",
+    "3.30"
   ], 
   "url": "http://github.com/alireza6677/somafm-radio-gnome-ext", 
   "uuid": "SomaFm-Radio@alireza6677.gmail.com", 
-  "version": 12
+  "version": 13
 }
