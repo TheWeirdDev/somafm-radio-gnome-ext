@@ -40,7 +40,7 @@ const channels =
 { name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-64-aac",             pic: "/images/sf1033.png",            num:30},
 ];
 
-const Channel = new Lang.Class({
+var Channel = new Lang.Class({
     Name: 'Channel',
 
     _init: function (name, link, pic ,num , fav) {
@@ -71,7 +71,7 @@ const Channel = new Lang.Class({
 
 });
 
-const ChannelBox = new Lang.Class({
+var ChannelBox = new Lang.Class({
     Name: 'Popup',
     Extends: PopupMenu.PopupBaseMenuItem,
 

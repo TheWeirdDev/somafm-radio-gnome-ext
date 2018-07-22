@@ -20,7 +20,7 @@ const Pango = imports.gi.Pango;
 // The code may look shitty. But it Works! :)
 
 
-const Popup = new Lang.Class({
+var Popup = new Lang.Class({
     Name: 'Popup',
     Extends: PopupMenu.PopupBaseMenuItem,
 
@@ -241,7 +241,7 @@ const Popup = new Lang.Class({
 
 });
 
-const Button = new Lang.Class({
+var Button = new Lang.Class({
     Name: 'Button',
     Extends: PanelMenu.Button,
 
