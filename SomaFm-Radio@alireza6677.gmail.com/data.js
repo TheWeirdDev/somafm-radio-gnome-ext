@@ -5,8 +5,8 @@ const Channels = Extension.imports.channels;
 
 const Shell = imports.gi.Shell;
 
-const FILE_NAME = 'prefs.json'
-const DIR_NAME = '.somafm-radio'
+const FILE_NAME = 'prefs.json';
+const DIR_NAME = '.somafm-radio';
 
 function load(){
 	let dir_path = GLib.get_home_dir() + "/" + DIR_NAME ;

@@ -1,17 +1,21 @@
+imports.gi.versions.Gst = "1.0";
+imports.gi.versions.GstAudio = "1.0";
+const Gst = imports.gi.Gst;
+const GstAudio = imports.gi.GstAudio;
+
 const Extension = imports.misc.extensionUtils.getCurrentExtension();
 const Gio = imports.gi.Gio;
 const GLib = imports.gi.GLib;
 const GObject = imports.gi.GObject;
-const Gst = imports.gi.Gst;
-const GstAudio = imports.gi.GstAudio;
 const Lang = imports.lang;
 const St = imports.gi.St;
+
 const Channels = Extension.imports.channels;
 
 const DEFAULT_VOLUME = 0.5;
 const CLIENT_NAME = "somafm-radio";
 
-const ControlButtons = new Lang.Class({
+var ControlButtons = new Lang.Class({
     Name: 'ControlButtons',
     Extends: St.BoxLayout,
 
@@ -83,11 +87,11 @@ const ControlButtons = new Lang.Class({
 
 });
 
-const RadioPlayer = new Lang.Class({
+var RadioPlayer = new Lang.Class({
     Name: 'RadioPlayer',
 
     _init: function (channel) {
-        Gst.init(null, 0);
+        Gst.init(null);
         this.playbin = Gst.ElementFactory.make("playbin", "somafm");
         this.playbin.set_property("uri", channel.getLink());
         this.sink = Gst.ElementFactory.make("pulsesink", "sink");
@@ -133,21 +137,13 @@ const RadioPlayer = new Lang.Class({
 
     next: function () {
         let num = this.channel.getNum();
-        if (num >= Channels.channels.length - 1)
-            num = 0;
-        else
-            num += 1;
-
+        num = (num >= Channels.channels.length - 1) ? 0 : num + 1;
         this.setChannel(Channels.getChannel(num));
     },
 
     prev: function () {
         let num = this.channel.getNum();
-        if (num <= 0)
-            num = Channels.channels.length - 1;
-        else
-            num -= 1;
-
+        num = (num <= 0) ? Channels.channels.length - 1 : num - 1;
         this.setChannel(Channels.getChannel(num));
     },
 
@@ -197,4 +193,4 @@ const RadioPlayer = new Lang.Class({
         }
     },
 
-})
+});

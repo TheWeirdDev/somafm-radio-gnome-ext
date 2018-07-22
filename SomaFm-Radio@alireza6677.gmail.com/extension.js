@@ -1,3 +1,4 @@
+imports.gi.versions.Gst = "1.0";
 const Gst = imports.gi.Gst;
 
 const Animation = imports.ui.animation;
@@ -269,11 +270,9 @@ const Button = new Lang.Class({
 
         let channelsMenu = new PopupMenu.PopupSubMenuMenuItem('Channels');
         this.menu.addMenuItem(channelsMenu);
-        let chs = Channels.getChannels();
-        for (let i = 0; i < chs.length; i++) {
-            let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
-            channelsMenu.menu.addMenuItem(channelSubMenu);
-        }
+        Channels.getChannels().forEach(ch => {
+            channelsMenu.menu.addMenuItem(new Channels.ChannelBox(ch, player, popup));
+        });
     },
 });
 
@@ -283,16 +282,16 @@ function reloadFavsMenu() {
         
     let chs = Channels.getFavChannels();
     fav_menu.menu.removeAll();
-    if (chs.length > 0) {
-        for (let i = 0; i < chs.length; i++) {
-            let channelSubMenu = new Channels.ChannelBox(chs[i], player, popup);
-            fav_menu.menu.addMenuItem(channelSubMenu);
-        }
-    } else {
+    if (chs.length < 1) {
         let emptymenu = new PopupMenu.PopupBaseMenuItem({ reactive: false });
         emptymenu.actor.add(new St.Label({ text: "Empty" }));
         fav_menu.menu.addMenuItem(emptymenu);
+        return;
     }
+
+    chs.forEach(ch => {
+        fav_menu.menu.addMenuItem(new Channels.ChannelBox(ch, player, popup));
+    });
 }
 
 function init() {

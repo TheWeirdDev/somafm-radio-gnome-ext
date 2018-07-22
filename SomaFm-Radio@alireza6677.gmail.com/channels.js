@@ -36,8 +36,8 @@ const channels =
 { name: "Doomed",                   link: "http://ice3.somafm.com/doomed-64-aac",             pic: "/images/doomed.png",            num:26},
 { name: "Dub Step Beyond",          link: "http://ice3.somafm.com/dubstep-64-aac",            pic: "/images/dubstep.png",           num:27},
 { name: "Black Rock FM",            link: "http://ice3.somafm.com/brfm-64-aac",               pic: "/images/1023brc.jpg",           num:28},
-{ name: "Mission Control",          link: "http://ice3.somafm.com/missioncontrol-64-aac",     pic: "/images/missioncontrol.jpg",    num:30},
-{ name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-64-aac",             pic: "/images/sf1033.png",            num:31},
+{ name: "Mission Control",          link: "http://ice3.somafm.com/missioncontrol-64-aac",     pic: "/images/missioncontrol.jpg",    num:29},
+{ name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-64-aac",             pic: "/images/sf1033.png",            num:30},
 ];
 
 const Channel = new Lang.Class({
@@ -110,20 +110,11 @@ const ChannelBox = new Lang.Class({
 });
 
 function getChannels() {
-    let array = [];
-    channels.forEach(function (item, index) {
-        array.push(new Channel(item.name, item.link, item.pic, item.num , Data.isFav(item.num)));
-    });
-    return array;
+    return channels.map(ch => new Channel(ch.name, ch.link, ch.pic, ch.num , Data.isFav(ch.num)));
 }
 
 function getFavChannels() {
-    let array = [];
-    channels.forEach(function (item, index) {
-        if(Data.isFav(item.num))
-            array.push(new Channel(item.name, item.link, item.pic, item.num , true));
-    });
-    return array;
+    return channels.filter(ch => Data.isFav(ch.num)).map(ch => new Channel(ch.name, ch.link, ch.pic, ch.num , true));
 }
 
 function getChannel(index) {
