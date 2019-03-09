@@ -38,6 +38,7 @@ const channels =
 { name: "Black Rock FM",            link: "http://ice3.somafm.com/brfm-64-aac",               pic: "/images/1023brc.jpg",           num:28},
 { name: "Mission Control",          link: "http://ice3.somafm.com/missioncontrol-64-aac",     pic: "/images/missioncontrol.jpg",    num:29},
 { name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-64-aac",             pic: "/images/sf1033.png",            num:30},
+{ name: "Groove Salad Classic",     link: "http://ice2.somafm.com/gsclassic-128-aac",         pic: "/images/gsclassic400.jpg",      num:31},
 ];
 
 var Channel = new Lang.Class({
