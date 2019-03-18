@@ -41,43 +41,45 @@ const channels =
 { name: "Groove Salad Classic",     link: "http://ice2.somafm.com/gsclassic-128-aac",         pic: "/images/gsclassic400.jpg",      num:31},
 ];
 
-var Channel = new Lang.Class({
-    Name: 'Channel',
+var Channel = class Channel{
 
-    _init: function (name, link, pic ,num , fav) {
+    constructor(name, link, pic ,num , fav) {
         this.name = name;
         this.link = link;
         this.pic = pic;
         this.num = num;
         this.fav = fav;
-    },
-    getName: function () {
+    }
+
+    getName() {
         return this.name;
-    },
-    getLink: function () {
+    }
+
+    getLink() {
         return this.link;
-    },
-    getPic: function () {
+    }
+
+    getPic() {
         return this.pic;
-    },
-    getNum: function (){
+    }
+
+    getNum(){
         return this.num;
-    },
-    isFav: function (){
+    }
+
+    isFav(){
         return this.fav;
-    },
-    setFav: function (f){
+    }
+
+    setFav(f){
         this.fav = f;
-    },
+    }
 
-});
+}
 
-var ChannelBox = new Lang.Class({
-    Name: 'Popup',
-    Extends: PopupMenu.PopupBaseMenuItem,
-
-    _init: function (channel, player, popup) {
-        this.parent({
+var ChannelBox = class ChannelBox extends PopupMenu.PopupBaseMenuItem {
+    constructor(channel, player, popup) {
+        super({
             reactive: true,
             can_focus: true,
         });
@@ -100,15 +102,15 @@ var ChannelBox = new Lang.Class({
         this.vbox.add_child(box2);
         box2.add(label1, { y_fill: false, y_align: St.Align.MIDDLE });
 
-    },
+    }
 
-    activate: function (event) {
+    activate(ev) {
         this.player.stop();
         this.player.setChannel(this.channel);
         this.player.play();
         this.popup.channelChanged();
     }
-});
+}
 
 function getChannels() {
     return channels.map(ch => new Channel(ch.name, ch.link, ch.pic, ch.num , Data.isFav(ch.num)));

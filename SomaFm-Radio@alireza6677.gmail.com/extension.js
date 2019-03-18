@@ -20,19 +20,19 @@ const Pango = imports.gi.Pango;
 // The code may look shitty. But it Works! :)
 
 
-var Popup = new Lang.Class({
-    Name: 'Popup',
-    Extends: PopupMenu.PopupBaseMenuItem,
+var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
 
-    _init: function (player) {
-        this.volume = Data.getLastVol();
-        this.old_vol = 0;
+    constructor(player) {
 
-        this.parent({
+        super({
             hover: false,
             activate: false,
             can_focus: true,
         });
+
+        this.volume = Data.getLastVol();
+        this.old_vol = 0;
+
         this.player = player;
 
         this.box = new St.BoxLayout({
@@ -74,8 +74,9 @@ var Popup = new Lang.Class({
 
         this.err = new St.Label({ text: "--- Error ---" });
         this.createUi();
-    },
-    setMute: function () {
+    }
+
+    setMute() {
         if (this.volume > 0) {
             this.old_vol = this.volume;
             this.volume = 0;
@@ -88,9 +89,9 @@ var Popup = new Lang.Class({
         this.player.setMute(this.volume == 0);
         this.setVolIcon(this.volume);
 
-    },
+    }
 
-    setLoading: function (state) {
+    setLoading(state) {
         if (!state) {
             this.spinner.actor.destroy();
             this.loadtxt.destroy();
@@ -102,9 +103,9 @@ var Popup = new Lang.Class({
         this.loadtxt = new St.Label({ text: "Loading..." });
         this.box.add(this.loadtxt, { x_fill: false, x_align: St.Align.MIDDLE });
         this.box.add_child(this.spinner.actor);
-    },
+    }
 
-    setError: function (state) {
+    setError(state) {
         if (!state) {
             this.err.destroy();
             return;
@@ -112,9 +113,9 @@ var Popup = new Lang.Class({
         this.stopped();
         this.err = new St.Label({ text: "--- Error ---" });
         this.box.add(this.err, { x_fill: false, x_align: St.Align.MIDDLE });
-    },
+    }
 
-    createUi: function () {
+    createUi() {
         this.setLoading(false);
 
         this.controlbtns = new Radio.ControlButtons(this.player, this);
@@ -199,14 +200,16 @@ var Popup = new Lang.Class({
         // })
         // );
 
-    },
-    stopped: function () {
+    }
+
+    stopped() {
         this.controlbtns.icon.set_icon_name('media-playback-start-symbolic');
         this.controlbtns.playing = false;
         this.setLoading(false);
         this.desc.set_text('Soma FM');
-    },
-    channelChanged: function () {
+    }
+
+    channelChanged() {
         this.controlbtns.icon.set_icon_name('media-playback-stop-symbolic');
         this.controlbtns.playing = true;
         this.setLoading(false);
@@ -217,18 +220,19 @@ var Popup = new Lang.Class({
         this.cfav = this.player.getChannel().isFav();
         this.star.set_icon_name(this.cfav ? 'starred-symbolic' : 'non-starred-symbolic');
         Data.save(this.player.getChannel(), this.volume, favs);
-    },
+    }
     // disconnectAll: function () {
     //     this.mixer.disconnect(this.stream_id);
     // },
-    setVolume: function (slider, vol, property) {
+    setVolume(slider, vol, property) {
         this.player.setVolume(vol);
         this.volume = vol;
         this.setVolIcon(vol);
         Data.save(this.player.getChannel(), this.volume, favs);
 
-    },
-    setVolIcon: function (vol) {
+    }
+
+    setVolIcon(vol) {
         if (vol == 0)
             this.mute_icon.set_icon_name('audio-volume-muted-symbolic');
         else if (vol < 0.3)
@@ -237,16 +241,15 @@ var Popup = new Lang.Class({
             this.mute_icon.set_icon_name('audio-volume-medium-symbolic');
         else
             this.mute_icon.set_icon_name('audio-volume-high-symbolic');
-    },
+    }
 
-});
+}
 
-var Button = new Lang.Class({
-    Name: 'Button',
-    Extends: PanelMenu.Button,
+var PanelButton = class PanelButton extends PanelMenu.Button {
 
-    _init: function (player) {
-        this.parent(0.0, "SomaFm");
+    constructor(player) {
+        
+        super(0.0, "SomaFm");
 
         let box = new St.BoxLayout({
             style_class: 'panel-status-menu-box'
@@ -273,8 +276,8 @@ var Button = new Lang.Class({
         Channels.getChannels().forEach(ch => {
             channelsMenu.menu.addMenuItem(new Channels.ChannelBox(ch, player, popup));
         });
-    },
-});
+    }
+}
 
 function reloadFavsMenu() {
     if(fav_menu == null)
@@ -311,7 +314,7 @@ function enable() {
     if (favs == null)
         favs = [];
 
-    button = new Button(player);
+    button = new PanelButton(player);
     Main.panel.addToStatusArea('somafm', button);
 }
 

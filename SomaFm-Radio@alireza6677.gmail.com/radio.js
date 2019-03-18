@@ -15,12 +15,10 @@ const Channels = Extension.imports.channels;
 const DEFAULT_VOLUME = 0.5;
 const CLIENT_NAME = "somafm-radio";
 
-var ControlButtons = new Lang.Class({
-    Name: 'ControlButtons',
-    Extends: St.BoxLayout,
+var ControlButtons = class ControlButtons extends St.BoxLayout{
 
-    _init: function (player, pr) {
-        this.parent({
+    constructor(player, pr) {
+        super({
             vertical: false,
         });
 
@@ -83,14 +81,13 @@ var ControlButtons = new Lang.Class({
 
             this.playing = !this.playing;
         }));
-    },
+    }
 
-});
+}
 
-var RadioPlayer = new Lang.Class({
-    Name: 'RadioPlayer',
+var RadioPlayer = class RadioPlayer {
 
-    _init: function (channel) {
+    constructor(channel) {
         Gst.init(null);
         this.playbin = Gst.ElementFactory.make("playbin", "somafm");
         this.playbin.set_property("uri", channel.getLink());
@@ -111,61 +108,65 @@ var RadioPlayer = new Lang.Class({
         this.onError = null;
         this.onTagChanged= null;
 
-    },
+    }
 
-    play: function () {
+    play() {
         this.playbin.set_state(Gst.State.PLAYING);
         this.playing = true;
-    },
-    setOnError: function (onError) {
+    }
+
+    setOnError(onError) {
         this.onError = onError;
-    },
+    }
 
-    setOnTagChanged: function (onTagChanged) {
+    setOnTagChanged(onTagChanged) {
         this.onTagChanged = onTagChanged;
-    },
+    }
 
-    setMute: function (mute) {
+    setMute(mute) {
         this.playbin.set_property("mute", mute);
-    },
+    }
 
-    stop: function () {
+    stop() {
         this.playbin.set_state(Gst.State.NULL);
         this.playing = false;
         this.tag = 'Soma FM';
-    },
+    }
 
-    next: function () {
+    next() {
         let num = this.channel.getNum();
         num = (num >= Channels.channels.length - 1) ? 0 : num + 1;
         this.setChannel(Channels.getChannel(num));
-    },
+    }
 
-    prev: function () {
+    prev() {
         let num = this.channel.getNum();
         num = (num <= 0) ? Channels.channels.length - 1 : num - 1;
         this.setChannel(Channels.getChannel(num));
-    },
+    }
 
-    setChannel: function (ch) {
+    setChannel(ch) {
         this.channel = ch;
         this.playbin.set_property("uri", ch.getLink());
-    },
-    getChannel: function () {
+    }
+
+    getChannel() {
         return this.channel;
-    },
+    }
 
-    setVolume: function (value) {
+    setVolume(value) {
         this.playbin.set_volume(GstAudio.StreamVolumeFormat.LINEAR, value);
-    },
+    }
 
-    isPlaying: function () {
+    isPlaying() {
         return this.playing;
-    },
-    getTag: function () {
+    }
+
+    getTag() {
         return this.tag;
-    },
-    _onMessageReceived: function (msg) {
+    }
+
+    _onMessageReceived(msg) {
         switch (msg.type) {
             case Gst.MessageType.TAG:
                 let tagList = msg.parse_tag();
@@ -191,6 +192,6 @@ var RadioPlayer = new Lang.Class({
             default:
                 break;
         }
-    },
+    }
 
-});
+}
