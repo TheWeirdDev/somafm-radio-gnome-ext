@@ -5,6 +5,7 @@ const Animation = imports.ui.animation;
 const Extension = imports.misc.extensionUtils.getCurrentExtension();
 const Gio = imports.gi.Gio;
 const Lang = imports.lang;
+const GObject = imports.gi.GObject;
 const Gtk = imports.gi.Gtk;
 const St = imports.gi.St;
 const Main = imports.ui.main;
@@ -20,11 +21,11 @@ const Pango = imports.gi.Pango;
 // The code may look shitty. But it Works! :)
 
 
-var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
+var SomaFMPopup = GObject.registerClass(class SomaFMPopup extends PopupMenu.PopupBaseMenuItem {
 
-    constructor(player) {
+    _init(player) {
 
-        super({
+        super._init({
             hover: false,
             activate: false,
             can_focus: true,
@@ -48,15 +49,13 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
             width: 170,
         });
 
-        this.actor.add(this.box);
-
-        this.setLoading(true);
+        this.add(this.box);
 
         // Volume slider
         this.slider = new Slider.Slider(this.volume);
-        this.slider.connect('value-changed', Lang.bind(this, this.setVolume));
+        this.slider.connect('notify::value', this.setVolume.bind(this));
 
-        this.bb.add_child(this.slider.actor);
+        this.bb.add_child(this.slider);
 
         // Mute icon
         this.mute_icon = new St.Icon({
@@ -72,7 +71,7 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
         this.volBox.add_child(this.bb);
         this.box.add_child(this.volBox);
 
-        this.err = new St.Label({ text: "--- Error ---" });
+        this.err = null;
         this.createUi();
     }
 
@@ -88,17 +87,22 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
         }
         this.player.setMute(this.volume == 0);
         this.setVolIcon(this.volume);
-
     }
 
     setLoading(state) {
         if (!state) {
-            this.spinner.actor.destroy();
-            this.loadtxt.destroy();
+            if (this.loadtxt != null){
+                this.loadtxt.destroy();
+                this.loadtxt = null;
+            }
+            if (this.spinner != null) {
+                this.spinner.actor.destroy();
+                this.spinner = null;
+            }
             return;
         }
-        let spinnerIcon = Gio.File.new_for_uri('resource:///org/gnome/shell/theme/process-working.svg');
-        this.spinner = new Animation.AnimatedIcon(spinnerIcon, 16);
+        
+        this.spinner = new Animation.AnimatedIcon(this.spinnerIcon, 16);
         this.spinner.play();
         this.loadtxt = new St.Label({ text: "Loading..." });
         this.box.add(this.loadtxt, { x_fill: false, x_align: St.Align.MIDDLE });
@@ -107,7 +111,10 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
 
     setError(state) {
         if (!state) {
-            this.err.destroy();
+            if(this.err != null) {
+                this.err.destroy();
+                this.err = null;
+            }
             return;
         }
         this.stopped();
@@ -116,6 +123,9 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
     }
 
     createUi() {
+        this.spinnerIcon = Gio.File.new_for_uri('resource:///org/gnome/shell/theme/process-working.svg');
+        this.spinner = null;
+        this.loadtxt = null;
         this.setLoading(false);
 
         this.controlbtns = new Radio.ControlButtons(this.player, this);
@@ -177,6 +187,7 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
             if(tag == null) tag = 'Soma FM';
             this.desc.set_text(tag);
             this.setLoading(false);
+            this.setError(false);
         }));
 
         // This piece of code is not compatible with gnome 3.18 and before that. I'm commenting it out. It may be useful later
@@ -224,10 +235,10 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
     // disconnectAll: function () {
     //     this.mixer.disconnect(this.stream_id);
     // },
-    setVolume(slider, vol, property) {
-        this.player.setVolume(vol);
-        this.volume = vol;
-        this.setVolIcon(vol);
+    setVolume(slider, event) {
+        this.player.setVolume(slider.value);
+        this.volume = slider.value;
+        this.setVolIcon(slider.value);
         Data.save(this.player.getChannel(), this.volume, favs);
 
     }
@@ -243,13 +254,13 @@ var Popup = class PopUp extends PopupMenu.PopupBaseMenuItem {
             this.mute_icon.set_icon_name('audio-volume-high-symbolic');
     }
 
-}
+});
 
-var PanelButton = class PanelButton extends PanelMenu.Button {
+var PanelButton = GObject.registerClass(class PanelButton extends PanelMenu.Button {
 
-    constructor(player) {
+    _init(player) {
         
-        super(0.0, "SomaFm");
+        super._init(0.0, "SomaFm");
 
         let box = new St.BoxLayout({
             style_class: 'panel-status-menu-box'
@@ -259,10 +270,10 @@ var PanelButton = class PanelButton extends PanelMenu.Button {
             style_class: 'system-status-icon',
         });
         box.add_actor(icon);
-        this.actor.add_actor(box);
-        this.actor.add_style_class_name('panel-status-button');
+        this.add_actor(box);
+        this.add_style_class_name('panel-status-button');
 
-        popup = new Popup(player);
+        popup = new SomaFMPopup(player);
         this.menu.addMenuItem(popup);
         this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
@@ -277,7 +288,8 @@ var PanelButton = class PanelButton extends PanelMenu.Button {
             channelsMenu.menu.addMenuItem(new Channels.ChannelBox(ch, player, popup));
         });
     }
-}
+
+});
 
 function reloadFavsMenu() {
     if(fav_menu == null)
@@ -287,7 +299,7 @@ function reloadFavsMenu() {
     fav_menu.menu.removeAll();
     if (chs.length < 1) {
         let emptymenu = new PopupMenu.PopupBaseMenuItem({ reactive: false });
-        emptymenu.actor.add(new St.Label({ text: "Empty" }));
+        emptymenu.add(new St.Label({ text: "Empty" }));
         fav_menu.menu.addMenuItem(emptymenu);
         return;
     }

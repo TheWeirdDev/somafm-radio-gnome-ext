@@ -15,7 +15,7 @@ const Channels = Extension.imports.channels;
 const DEFAULT_VOLUME = 0.5;
 const CLIENT_NAME = "somafm-radio";
 
-var ControlButtons = class ControlButtons extends St.BoxLayout{
+var ControlButtons = class ControlButtons extends St.BoxLayout {
 
     constructor(player, pr) {
         super({
@@ -83,7 +83,7 @@ var ControlButtons = class ControlButtons extends St.BoxLayout{
         }));
     }
 
-}
+};
 
 var RadioPlayer = class RadioPlayer {
 

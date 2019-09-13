@@ -3,6 +3,7 @@ const St = imports.gi.St;
 const PopupMenu = imports.ui.popupMenu;
 const Extension = imports.misc.extensionUtils.getCurrentExtension();
 const Gio = imports.gi.Gio;
+const GObject = imports.gi.GObject;
 const Data = Extension.imports.data;
 
 const channels = 
@@ -75,11 +76,12 @@ var Channel = class Channel{
         this.fav = f;
     }
 
-}
+};
 
-var ChannelBox = class ChannelBox extends PopupMenu.PopupBaseMenuItem {
-    constructor(channel, player, popup) {
-        super({
+var ChannelBox = GObject.registerClass(class ChannelBox extends PopupMenu.PopupBaseMenuItem {
+
+    _init(channel, player, popup) {
+        super._init({
             reactive: true,
             can_focus: true,
         });
@@ -88,7 +90,7 @@ var ChannelBox = class ChannelBox extends PopupMenu.PopupBaseMenuItem {
         this.popup = popup;
 
         this.vbox = new St.BoxLayout({ vertical: false });
-        this.actor.add_child(this.vbox);
+        this.add_child(this.vbox);
 
         let icon2 = new St.Icon({
             gicon: Gio.icon_new_for_string(Extension.path + channel.getPic()),
@@ -110,7 +112,7 @@ var ChannelBox = class ChannelBox extends PopupMenu.PopupBaseMenuItem {
         this.player.play();
         this.popup.channelChanged();
     }
-}
+});
 
 function getChannels() {
     return channels.map(ch => new Channel(ch.name, ch.link, ch.pic, ch.num , Data.isFav(ch.num)));
