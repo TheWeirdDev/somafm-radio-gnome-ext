@@ -256,7 +256,7 @@ var SomaFMPopup = GObject.registerClass(class SomaFMPopup extends PopupMenu.Popu
 
 });
 
-var PanelButton = GObject.registerClass(class PanelButton extends PanelMenu.Button {
+var SomaFMPanelButton = GObject.registerClass(class SomaFMPanelButton extends PanelMenu.Button {
 
     _init(player) {
         
@@ -326,7 +326,7 @@ function enable() {
     if (favs == null)
         favs = [];
 
-    button = new PanelButton(player);
+    button = new SomaFMPanelButton(player);
     Main.panel.addToStatusArea('somafm', button);
 }
 
