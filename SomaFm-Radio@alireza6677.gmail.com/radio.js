@@ -15,10 +15,14 @@ const Channels = Extension.imports.channels;
 const DEFAULT_VOLUME = 0.5;
 const CLIENT_NAME = "somafm-radio";
 
-var ControlButtons = class ControlButtons extends St.BoxLayout {
+var ControlButtons = GObject.registerClass(
+    {
+        GTypeName: 'ControlButtons'
+    },
+    class ControlButtons extends St.BoxLayout {
 
-    constructor(player, pr) {
-        super({
+    _init(player, pr) {
+        super._init({
             vertical: false,
         });
 
@@ -83,7 +87,7 @@ var ControlButtons = class ControlButtons extends St.BoxLayout {
         }));
     }
 
-};
+});
 
 var RadioPlayer = class RadioPlayer {
 

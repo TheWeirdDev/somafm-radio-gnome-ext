@@ -21,7 +21,11 @@ const Pango = imports.gi.Pango;
 // The code may look shitty. But it Works! :)
 
 
-var SomaFMPopup = GObject.registerClass(class SomaFMPopup extends PopupMenu.PopupBaseMenuItem {
+var SomaFMPopup = GObject.registerClass(
+    {
+        GTypeName: 'SomaFMPopup'
+    },
+    class extends PopupMenu.PopupBaseMenuItem {
 
     _init(player) {
 
@@ -256,7 +260,11 @@ var SomaFMPopup = GObject.registerClass(class SomaFMPopup extends PopupMenu.Popu
 
 });
 
-var SomaFMPanelButton = GObject.registerClass(class SomaFMPanelButton extends PanelMenu.Button {
+var SomaFMPanelButton = GObject.registerClass(
+    {
+        GTypeName: 'SomaFMPanelButton'
+    },
+    class extends PanelMenu.Button {
 
     _init(player) {
         
