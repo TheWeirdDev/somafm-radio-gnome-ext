@@ -83,11 +83,11 @@ var SomaFMPopup = GObject.registerClass(
         if (this.volume > 0) {
             this.old_vol = this.volume;
             this.volume = 0;
-            this.slider.setValue(0);
+            this.slider.value = 0;
 
         } else {
             this.volume = this.old_vol;
-            this.slider.setValue(this.volume);
+            this.slider.value = this.volume;
         }
         this.player.setMute(this.volume == 0);
         this.setVolIcon(this.volume);
