@@ -159,7 +159,8 @@ var RadioPlayer = class RadioPlayer {
     }
 
     setVolume(value) {
-        this.playbin.set_volume(GstAudio.StreamVolumeFormat.LINEAR, value);
+        //this.playbin.set_volume(GstAudio.StreamVolumeFormat.LINEAR, value);
+        this.playbin.volume = value;
     }
 
     isPlaying() {

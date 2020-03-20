@@ -100,7 +100,7 @@ var SomaFMPopup = GObject.registerClass(
                 this.loadtxt = null;
             }
             if (this.spinner != null) {
-                this.spinner.actor.destroy();
+                this.spinner.destroy();
                 this.spinner = null;
             }
             return;
@@ -110,7 +110,7 @@ var SomaFMPopup = GObject.registerClass(
         this.spinner.play();
         this.loadtxt = new St.Label({ text: "Loading..." });
         this.box.add(this.loadtxt, { x_fill: false, x_align: St.Align.MIDDLE });
-        this.box.add_child(this.spinner.actor);
+        this.box.add_child(this.spinner);
     }
 
     setError(state) {

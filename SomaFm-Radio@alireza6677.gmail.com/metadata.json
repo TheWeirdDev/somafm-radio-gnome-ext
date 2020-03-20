@@ -3,10 +3,9 @@
   "description": "Listen to SomaFm free internet radio using Gnome\n\n* Featues:\n- 32 Channels\n- Volume slider\n- Favorites menu\n- Good sound quality\n- Supports most gnome-shell versions\n- Channel logos\n\n\n* Requirements:\n- Gstreamer: You need to install gstreamer and multimedia codecs/plugins for your distro.", 
   "name": "SomaFm internet radio", 
   "shell-version": [
-    "3.34",
     "3.36"
   ], 
   "url": "http://github.com/TheWeirdDev/somafm-radio-gnome-ext", 
   "uuid": "SomaFm-Radio@alireza6677.gmail.com", 
-  "version": 26
+  "version": 27
 }
