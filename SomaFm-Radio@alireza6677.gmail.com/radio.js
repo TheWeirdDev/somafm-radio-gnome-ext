@@ -9,6 +9,7 @@ const GLib = imports.gi.GLib;
 const GObject = imports.gi.GObject;
 const Lang = imports.lang;
 const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
 
 const Channels = Extension.imports.channels;
 
@@ -24,6 +25,8 @@ var ControlButtons = GObject.registerClass(
     _init(player, pr) {
         super._init({
             vertical: false,
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
         });
 
         this.prev = new St.Icon({

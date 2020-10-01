@@ -1,5 +1,6 @@
 const Lang = imports.lang;
 const St = imports.gi.St;
+const Clutter = imports.gi.Clutter;
 const PopupMenu = imports.ui.popupMenu;
 const Extension = imports.misc.extensionUtils.getCurrentExtension();
 const Gio = imports.gi.Gio;
@@ -99,10 +100,14 @@ var ChannelBox = GObject.registerClass(class ChannelBox extends PopupMenu.PopupB
         });
 
         let box2 = new St.BoxLayout({ vertical: false });
-        let label1 = new St.Label({ text: channel.getName() });
+        let label1 = new St.Label({
+            text: channel.getName(),
+            y_align: Clutter.ActorAlign.CENTER,
+            y_expand: true,
+        });
         this.vbox.add_child(icon2);
         this.vbox.add_child(box2);
-        box2.add(label1, { y_fill: false, y_align: St.Align.MIDDLE });
+        box2.add(label1);
 
     }
 

@@ -1,6 +1,7 @@
 imports.gi.versions.Gst = "1.0";
 const Gst = imports.gi.Gst;
 
+const Clutter = imports.gi.Clutter;
 const Animation = imports.ui.animation;
 const Extension = imports.misc.extensionUtils.getCurrentExtension();
 const Gio = imports.gi.Gio;
@@ -108,8 +109,12 @@ var SomaFMPopup = GObject.registerClass(
         
         this.spinner = new Animation.AnimatedIcon(this.spinnerIcon, 16);
         this.spinner.play();
-        this.loadtxt = new St.Label({ text: "Loading..." });
-        this.box.add(this.loadtxt, { x_fill: false, x_align: St.Align.MIDDLE });
+        this.loadtxt = new St.Label({
+            text: "Loading...",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
+        this.box.add(this.loadtxt);
         this.box.add_child(this.spinner);
     }
 
@@ -122,8 +127,12 @@ var SomaFMPopup = GObject.registerClass(
             return;
         }
         this.stopped();
-        this.err = new St.Label({ text: "--- Error ---" });
-        this.box.add(this.err, { x_fill: false, x_align: St.Align.MIDDLE });
+        this.err = new St.Label({
+            text: "--- Error ---",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
+        this.box.add(this.err);
     }
 
     createUi() {
@@ -138,25 +147,37 @@ var SomaFMPopup = GObject.registerClass(
             this.setError(true);
         }));
 
-        this.box.add(this.controlbtns, { x_align: St.Align.MIDDLE, x_fill: false });
+        this.box.add(this.controlbtns);
 
         // Stream description
-        this.desc = new St.Label({ text:"Soma FM" , style: 'padding:5px' });
+        this.desc = new St.Label({
+            text:"Soma FM",
+            style: 'padding:5px',
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
         this.desc.clutter_text.line_wrap = true;
         this.desc.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
         this.desc.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
-        this.box.add(this.desc, { x_fill: false, x_align: St.Align.MIDDLE });
+        this.box.add(this.desc);
 
         // Current channel
-        this.ch = new St.Label({ text: this.player.getChannel().getName(), reactive: true });
-        this.box.add(this.ch, { x_fill: false, x_align: St.Align.MIDDLE });
+        this.ch = new St.Label({
+            text: this.player.getChannel().getName(),
+            reactive: true,
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
+        this.box.add(this.ch);
 
         // Channel picture
         this.ch_pic = new St.Icon({
             gicon: Gio.icon_new_for_string(Extension.path + this.player.getChannel().getPic()),
             style: 'padding:10px',
             icon_size: 75,
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
         });
 
         // favorite button
@@ -164,6 +185,8 @@ var SomaFMPopup = GObject.registerClass(
             icon_name: this.player.getChannel().isFav() ? 'starred-symbolic' : 'non-starred-symbolic',
             icon_size: 20,
             reactive: true,
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
         });
 
         this.star.connect('button-press-event', Lang.bind(this, function () {
@@ -182,8 +205,8 @@ var SomaFMPopup = GObject.registerClass(
             reloadFavsMenu();
         }));
 
-        this.box.add(this.ch_pic, { x_fill: false, x_align: St.Align.MIDDLE });
-        this.box.add(this.star, { x_fill: false, x_align: St.Align.MIDDLE });
+        this.box.add(this.ch_pic);
+        this.box.add(this.star);
 
         // This listener may be still buggy. 
         this.player.setOnTagChanged(Lang.bind(this, function(){
