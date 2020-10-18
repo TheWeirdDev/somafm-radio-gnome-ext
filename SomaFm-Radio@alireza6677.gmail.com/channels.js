@@ -41,6 +41,7 @@ const channels =
 { name: "Mission Control",          link: "http://ice3.somafm.com/missioncontrol-64-aac",     pic: "/images/missioncontrol.jpg",    num:29},
 { name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-64-aac",             pic: "/images/sf1033.png",            num:30},
 { name: "Groove Salad Classic",     link: "http://ice2.somafm.com/gsclassic-128-aac",         pic: "/images/gsclassic400.jpg",      num:31},
+{ name: "Vaporwaves",               link: "http://ice3.somafm.com/vaporwaves-64-aac",         pic: "/images/vaporwaves400.png",     num:32},
 ];
 
 var Channel = class Channel{
