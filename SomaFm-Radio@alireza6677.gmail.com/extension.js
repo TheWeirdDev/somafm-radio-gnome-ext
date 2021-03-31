@@ -14,7 +14,6 @@ const PanelMenu = imports.ui.panelMenu;
 const PopupMenu = imports.ui.popupMenu;
 const Radio = Extension.imports.radio;
 const Slider = imports.ui.slider;
-//const Volume = imports.ui.status.volume;
 const Channels = Extension.imports.channels;
 const Data = Extension.imports.data;
 const Pango = imports.gi.Pango;
@@ -54,7 +53,7 @@ var SomaFMPopup = GObject.registerClass(
             width: 170,
         });
 
-        this.add(this.box);
+        this.add_child(this.box);
 
         // Volume slider
         this.slider = new Slider.Slider(this.volume);
@@ -96,26 +95,12 @@ var SomaFMPopup = GObject.registerClass(
 
     setLoading(state) {
         if (!state) {
-            if (this.loadtxt != null){
-                this.loadtxt.destroy();
-                this.loadtxt = null;
-            }
-            if (this.spinner != null) {
-                this.spinner.destroy();
-                this.spinner = null;
-            }
-            return;
+            this.box.remove_child(this.loadtxt);
+            this.box.remove_child(this.spinner);
+        } else {
+            this.box.add_child(this.loadtxt);
+            this.box.add_child(this.spinner);
         }
-        
-        this.spinner = new Animation.AnimatedIcon(this.spinnerIcon, 16);
-        this.spinner.play();
-        this.loadtxt = new St.Label({
-            text: "Loading...",
-            x_align: Clutter.ActorAlign.CENTER,
-            x_expand: true,
-        });
-        this.box.add(this.loadtxt);
-        this.box.add_child(this.spinner);
     }
 
     setError(state) {
@@ -132,14 +117,20 @@ var SomaFMPopup = GObject.registerClass(
             x_align: Clutter.ActorAlign.CENTER,
             x_expand: true,
         });
-        this.box.add(this.err);
+        this.box.add_child(this.err);
     }
 
     createUi() {
         this.spinnerIcon = Gio.File.new_for_uri('resource:///org/gnome/shell/theme/process-working.svg');
-        this.spinner = null;
-        this.loadtxt = null;
-        this.setLoading(false);
+        this.spinner = new Animation.AnimatedIcon(this.spinnerIcon, 16);
+        this.spinner.x_align = Clutter.ActorAlign.CENTER;
+        this.spinner.x_expand = true;
+        this.spinner.play();
+        this.loadtxt = new St.Label({
+            text: "Loading...",
+            x_align: Clutter.ActorAlign.CENTER,
+            x_expand: true,
+        });
 
         this.controlbtns = new Radio.ControlButtons(this.player, this);
         this.player.setOnError(Lang.bind(this, function () {
@@ -147,7 +138,7 @@ var SomaFMPopup = GObject.registerClass(
             this.setError(true);
         }));
 
-        this.box.add(this.controlbtns);
+        this.box.add_child(this.controlbtns);
 
         // Stream description
         this.desc = new St.Label({
@@ -160,7 +151,7 @@ var SomaFMPopup = GObject.registerClass(
         this.desc.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
         this.desc.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
 
-        this.box.add(this.desc);
+        this.box.add_child(this.desc);
 
         // Current channel
         this.ch = new St.Label({
@@ -169,7 +160,7 @@ var SomaFMPopup = GObject.registerClass(
             x_align: Clutter.ActorAlign.CENTER,
             x_expand: true,
         });
-        this.box.add(this.ch);
+        this.box.add_child(this.ch);
 
         // Channel picture
         this.ch_pic = new St.Icon({
@@ -205,8 +196,8 @@ var SomaFMPopup = GObject.registerClass(
             reloadFavsMenu();
         }));
 
-        this.box.add(this.ch_pic);
-        this.box.add(this.star);
+        this.box.add_child(this.ch_pic);
+        this.box.add_child(this.star);
 
         // This listener may be still buggy. 
         this.player.setOnTagChanged(Lang.bind(this, function(){
@@ -216,27 +207,6 @@ var SomaFMPopup = GObject.registerClass(
             this.setLoading(false);
             this.setError(false);
         }));
-
-        // This piece of code is not compatible with gnome 3.18 and before that. I'm commenting it out. It may be useful later
-        //
-        // this.mixer = Volume.getMixerControl();
-        // this.stream_id = this.mixer.connect('stream-changed', Lang.bind(this, function () {
-        //     for (var i = 0, c = this.mixer.get_streams(); i < c.length; i++) {
-        //         if (c[i].name == Radio.CLIENT_NAME) {
-        //             if (this.player.isPlaying()) {
-        //                 this.desc.set_text(c[i].description);
-        //                 if (c[i].description != 'pulsesink probe')
-        //                     this.setLoading(false);
-        //                 this.ch.set_text(this.player.getChannel().getName());
-        //                 break;
-        //             }
-        //             //EXPERIMENTAL
-        //             //if(!this.slider._dragging)
-        //             //  this.slider.setValue(c[i].volume / 65536);
-        //         }
-        //     }
-        // })
-        // );
 
     }
 
