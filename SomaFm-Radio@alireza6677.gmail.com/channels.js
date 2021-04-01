@@ -42,6 +42,7 @@ const channels =
 { name: "SF 10-33",                 link: "http://ice3.somafm.com/sf1033-128-aac",             pic: "/images/sf1033.png",            num:30},
 { name: "Groove Salad Classic",     link: "http://ice2.somafm.com/gsclassic-128-aac",          pic: "/images/gsclassic400.jpg",      num:31},
 { name: "Vaporwaves",               link: "http://ice3.somafm.com/vaporwaves-128-aac",         pic: "/images/vaporwaves400.png",     num:32},
+{ name: "Heavyweight Reggae",       link: "http://ice2.somafm.com/reggae-128-aac",             pic: '/images/reggae400.png',         num:33},
 ];
 
 var Channel = class Channel{
