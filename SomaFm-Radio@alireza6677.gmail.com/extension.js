@@ -48,18 +48,12 @@ var SomaFMPopup = GObject.registerClass(
             vertical: false,
             width: 200,
         });
-        this.bb = new St.BoxLayout({
-            vertical: true,
-            width: 170,
-        });
 
         this.add_child(this.box);
 
         // Volume slider
         this.slider = new Slider.Slider(this.volume);
         this.slider.connect('notify::value', this.setVolume.bind(this));
-
-        this.bb.add_child(this.slider);
 
         // Mute icon
         this.mute_icon = new St.Icon({
@@ -72,7 +66,7 @@ var SomaFMPopup = GObject.registerClass(
         this.mute_icon.connect('button-press-event', Lang.bind(this, this.setMute));
 
         this.volBox.add_child(this.mute_icon);
-        this.volBox.add_child(this.bb);
+        this.volBox.add_child(this.slider);
         this.box.add_child(this.volBox);
 
         this.err = null;
