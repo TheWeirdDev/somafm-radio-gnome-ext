@@ -17,9 +17,6 @@ const Slider = imports.ui.slider;
 const Channels = Extension.imports.channels;
 const Data = Extension.imports.data;
 const Pango = imports.gi.Pango;
-// I'm not a JS developer.
-// The code may look shitty. But it Works! :)
-
 
 var SomaFMPopup = GObject.registerClass(
     {
