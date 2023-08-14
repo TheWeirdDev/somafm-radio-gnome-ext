@@ -74,21 +74,11 @@ export function save(lastChannel, lastVol, favs) {
 	let file = Gio.file_new_for_path(filepath);
 	let raw = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
 	let out = Gio.BufferedOutputStream.new_sized(raw, 4096);
-	Shell.write_string_to_stream(
-		out,
-		'{\n\t"lastChannel":' + lastChannel.getNum() + ",\n",
-	);
-
-	Shell.write_string_to_stream(out, '\t"favs":');
-	if (favs != null && favs.length > 0) {
-		Shell.write_string_to_stream(out, JSON.stringify(favs, null, "\t"));
-		Shell.write_string_to_stream(out, ",\n");
-	} else {
-		// If array is empty, write '[]' instead
-		Shell.write_string_to_stream(out, "[],\n");
-	}
-
-	Shell.write_string_to_stream(out, '\t"lastVol":' + lastVol.toFixed(2) + "\n");
-	Shell.write_string_to_stream(out, "}\n");
+	const saveData = {
+		lastChannel: lastChannel.getNum(),
+		favs: Array.isArray(favs) ? favs : [],
+		lastVol: lastVol.toFixed(2),
+	};
+	Shell.write_string_to_stream(out, JSON.stringify(saveData, null, 4));
 	out.close(null);
 }
