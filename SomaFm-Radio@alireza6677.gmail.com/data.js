@@ -10,6 +10,12 @@ const DIR_NAME = ".somafm-radio";
 
 export function load() {
 	let dir_path = GLib.get_home_dir() + "/" + DIR_NAME;
+	const defaultData = {
+		lastChannel: 0,
+		favs: [],
+		lastVol: 0.5,
+	};
+
 	create(dir_path);
 	let file_path = GLib.get_home_dir() + "/" + DIR_NAME + "/" + FILE_NAME;
 	let content;
@@ -17,15 +23,15 @@ export function load() {
 	try {
 		content = Shell.get_file_contents_utf8_sync(file_path);
 	} catch (e) {
-		global.logError("Failed to load json: " + e);
-		return null;
+		console.error("SomaFM: failed to load json: " + e);
+		return defaultData;
 	}
 	// parse json file
 	try {
 		channelList = JSON.parse(content);
 	} catch (e) {
-		global.logError("Failed to parse json: " + e);
-		return null;
+		console.error("SomaFM: Failed to parse json: " + e);
+		return defaultData;
 	}
 	return channelList;
 }
@@ -55,7 +61,7 @@ export function create(dir_path) {
 			let file = dir.get_child(FILE_NAME);
 			source_file.copy(file, Gio.FileCopyFlags.NONE, null, null);
 		} catch (e) {
-			global.logError("Failed to create directory and/or file! " + e);
+			console.error("SomaFM: Failed to create directory and/or file! " + e);
 		}
 	} else {
 		let file = dir.get_child(FILE_NAME);
@@ -63,7 +69,7 @@ export function create(dir_path) {
 			try {
 				source_file.copy(file, Gio.FileCopyFlags.NONE, null, null);
 			} catch (e) {
-				global.logError("Failed to create file! " + e);
+				console.error("SomaFM: Failed to create file! " + e);
 			}
 		}
 	}

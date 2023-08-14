@@ -27,7 +27,7 @@ let favs;
 let fav_menu;
 export let extPath;
 
-export const SomaFMPopup = GObject.registerClass(
+const SomaFMPopup = GObject.registerClass(
     {
         GTypeName: "SomaFMPopup",
     },
@@ -256,7 +256,7 @@ export const SomaFMPopup = GObject.registerClass(
     },
 );
 
-export const SomaFMPanelButton = GObject.registerClass(
+const SomaFMPanelButton = GObject.registerClass(
     {
         GTypeName: "SomaFMPanelButton",
     },
@@ -295,7 +295,7 @@ export const SomaFMPanelButton = GObject.registerClass(
     },
 );
 
-export function reloadFavsMenu() {
+function reloadFavsMenu() {
     if (fav_menu == null) return;
 
     let chs = Channels.getFavChannels();
@@ -331,5 +331,9 @@ export default class SomaFMRadioExtension extends Extension {
         popup.destroy();
         button.destroy();
         favs = null;
+        button = null;
+        popup = null;
+        player = null;
+        fav_menu = null;
     }
 }
