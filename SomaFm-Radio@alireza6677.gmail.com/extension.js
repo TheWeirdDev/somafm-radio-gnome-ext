@@ -317,9 +317,6 @@ export default class SomaFMRadioExtension extends Extension {
         extPath = this.path;
         player = new Radio.RadioPlayer(Data.getLastChannel());
         player.setVolume(Data.getLastVol());
-        console.log("SOMAFM LOGS");
-        console.log(this);
-        console.log(extPath);
 
         favs = Data.getFavs();
         if (favs == null) favs = [];
