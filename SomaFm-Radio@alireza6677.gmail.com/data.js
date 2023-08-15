@@ -81,9 +81,12 @@ export function save(lastChannel, lastVol, favs) {
 	let raw = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
 	let out = Gio.BufferedOutputStream.new_sized(raw, 4096);
 	const saveData = {
-		lastChannel: lastChannel.getNum(),
+		lastChannel: lastChannel ? lastChannel.getNum() : 0,
 		favs: Array.isArray(favs) ? favs : [],
-		lastVol: lastVol.toFixed(2),
+		lastVol:
+			typeof lastVol === "number" && isFinite(lastVol)
+				? lastVol.toFixed(2)
+				: 0.5,
 	};
 	Shell.write_string_to_stream(out, JSON.stringify(saveData, null, 4));
 	out.close(null);
