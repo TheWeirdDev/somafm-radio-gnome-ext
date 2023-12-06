@@ -215,6 +215,45 @@ export const channels = [
     },
 ];
 
+const holidayChannels = [
+    {
+        name: "n5MD Radio",
+        link: "http://ice4.somafm.com/n5md-128-aac",
+        pic: "/images/n5md120.png",
+        num: 34,
+    },
+    {
+        name: "Department Store Christmas",
+        link: "http://ice4.somafm.com/deptstore-128-aac",
+        pic: "/images/deptstore120.jpg",
+        num: 35,
+    },
+    {
+        name: "Christmas Lounge",
+        link: "http://ice4.somafm.com/christmas-128-aac",
+        pic: "/images/christmas120.png",
+        num: 36,
+    },
+    {
+        name: "Christmas Rocks!",
+        link: "http://ice4.somafm.com/xmasrocks-128-aac",
+        pic: "/images/xmasrocks120.png",
+        num: 37,
+    },
+    {
+        name: "Xmas in Frisko",
+        link: "http://ice4.somafm.com/xmasinfrisko-128-aac",
+        pic: "/images/xmasinfrisko120.jpg",
+        num: 38,
+    },
+    {
+        name: "Jolly Ol' Soul",
+        link: "http://ice4.somafm.com/jollysoul-128-aac",
+        pic: "/images/jollysoul120.png",
+        num: 39,
+    },
+];
+
 export const Channel = class Channel {
     constructor(name, link, pic, num, fav) {
         this.name = name;
@@ -290,19 +329,22 @@ export const ChannelBox = GObject.registerClass(
 );
 
 export function getChannels() {
-    return channels.map(
+    const isDecember = new Date().getMonth() === 11;
+    const allChannels = isDecember ? [...channels, ...holidayChannels] : channels;
+
+    return allChannels.map(
         (ch) => new Channel(ch.name, ch.link, ch.pic, ch.num, Data.isFav(ch.num)),
     );
 }
 
 export function getFavChannels() {
-    return channels
+    return getChannels()
         .filter((ch) => Data.isFav(ch.num))
         .map((ch) => new Channel(ch.name, ch.link, ch.pic, ch.num, true));
 }
 
 export function getChannel(index) {
-    let item = channels[index];
+    let item = getChannels()[index] ?? getChannels()[0];
     return new Channel(
         item.name,
         item.link,

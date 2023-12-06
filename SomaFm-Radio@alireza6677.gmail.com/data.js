@@ -37,7 +37,7 @@ export function load() {
 }
 
 export function getLastChannel() {
-	return Channels.getChannel(load().lastChannel);
+	return Channels.getChannel(load().lastChannel) ?? Channels.getChannel(0);
 }
 
 export function getLastVol() {
