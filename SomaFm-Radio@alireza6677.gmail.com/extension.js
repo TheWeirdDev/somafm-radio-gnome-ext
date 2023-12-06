@@ -92,11 +92,11 @@ const SomaFMPopup = GObject.registerClass(
 
         setLoading(state) {
             if (!state) {
-                this.box.remove_child(this.loadtxt);
-                this.box.remove_child(this.spinner);
+                this.loadtxt.hide();
+                this.spinner.hide();
             } else {
-                this.box.add_child(this.loadtxt);
-                this.box.add_child(this.spinner);
+                this.loadtxt.show();
+                this.spinner.show();
             }
         }
 
@@ -125,11 +125,14 @@ const SomaFMPopup = GObject.registerClass(
             this.spinner.x_align = Clutter.ActorAlign.CENTER;
             this.spinner.x_expand = true;
             this.spinner.play();
+            this.spinner.hide();
+            
             this.loadtxt = new St.Label({
                 text: "Loading...",
                 x_align: Clutter.ActorAlign.CENTER,
                 x_expand: true,
             });
+            this.loadtxt.hide();
 
             this.controlbtns = new Radio.ControlButtons(this.player, this);
             this.player.setOnError(() => {
@@ -210,6 +213,9 @@ const SomaFMPopup = GObject.registerClass(
                 this.setLoading(false);
                 this.setError(false);
             });
+
+            this.box.add_child(this.spinner);
+            this.box.add_child(this.loadtxt);
         }
 
         stopped() {

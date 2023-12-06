@@ -145,7 +145,9 @@ export const RadioPlayer = class RadioPlayer {
 
     setChannel(ch) {
         this.channel = ch;
+        this.stop();
         this.playbin.set_property("uri", ch.getLink());
+        this.play();
     }
 
     getChannel() {
