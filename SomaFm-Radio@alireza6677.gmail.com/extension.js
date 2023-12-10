@@ -46,11 +46,11 @@ const SomaFMPopup = GObject.registerClass(
 
             this.box = new St.BoxLayout({
                 vertical: true,
-                width: 200,
+                width: 250,
             });
             this.volBox = new St.BoxLayout({
                 vertical: false,
-                width: 200,
+                width: 250,
             });
 
             this.add_child(this.box);
@@ -170,7 +170,7 @@ const SomaFMPopup = GObject.registerClass(
                     extPath + this.player.getChannel().getPic(),
                 ),
                 style: "padding:10px",
-                icon_size: 75,
+                icon_size: 100,
                 x_align: Clutter.ActorAlign.CENTER,
                 x_expand: true,
             });
@@ -180,7 +180,7 @@ const SomaFMPopup = GObject.registerClass(
                 icon_name: this.player.getChannel().isFav()
                     ? "starred-symbolic"
                     : "non-starred-symbolic",
-                icon_size: 20,
+                icon_size: 25,
                 reactive: true,
                 x_align: Clutter.ActorAlign.CENTER,
                 x_expand: true,
@@ -286,12 +286,15 @@ const SomaFMPanelButton = GObject.registerClass(
             this.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
 
             fav_menu = new PopupMenu.PopupSubMenuMenuItem("Favorites");
+            fav_menu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
             this.menu.addMenuItem(fav_menu);
 
             reloadFavsMenu();
 
             let channelsMenu = new PopupMenu.PopupSubMenuMenuItem("Channels");
+            channelsMenu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
             this.menu.addMenuItem(channelsMenu);
+            
             Channels.getChannels().forEach((ch) => {
                 channelsMenu.menu.addMenuItem(
                     new Channels.ChannelBox(ch, player, popup),
