@@ -2,7 +2,7 @@
 
 Listen to soma fm free internet radio in your Gnome desktop
 
-![screenshot](https://extensions.gnome.org/extension-data/screenshots/screenshot_1237_5yJIa4m.png)
+![screenshot](https://extensions.gnome.org/extension-data/screenshots/screenshot_1237_2hZ7Txv.png)
 
 # How to install
 
