@@ -277,8 +277,8 @@ const SomaFMPanelButton = GObject.registerClass(
                 gicon: Gio.icon_new_for_string(extPath + "/radio-symbolic.svg"),
                 style_class: "system-status-icon",
             });
-            box.add_actor(icon);
-            this.add_actor(box);
+            box.add_child(icon);
+            this.add_child(box);
             this.add_style_class_name("panel-status-button");
 
             popup = new SomaFMPopup(player);
@@ -311,7 +311,7 @@ function reloadFavsMenu() {
     fav_menu.menu.removeAll();
     if (chs.length < 1) {
         let emptymenu = new PopupMenu.PopupBaseMenuItem({ reactive: false });
-        emptymenu.add(new St.Label({ text: "Empty" }));
+        emptymenu.add_child(new St.Label({ text: "Empty" }));
         fav_menu.menu.addMenuItem(emptymenu);
         return;
     }

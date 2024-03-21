@@ -316,7 +316,7 @@ export const ChannelBox = GObject.registerClass(
             });
             this.vbox.add_child(icon2);
             this.vbox.add_child(box2);
-            box2.add(label1);
+            box2.add_child(label1);
         }
 
         activate(ev) {
