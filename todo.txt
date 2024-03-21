@@ -1,2 +1,0 @@
-[ ] - Remove the use of Lang module
-[ ] - Migrate to ES6 modules
