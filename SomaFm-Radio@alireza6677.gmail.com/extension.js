@@ -52,7 +52,11 @@ const SomaFMPopup = GObject.registerClass(
                 vertical: false,
                 width: 250,
             });
-
+            this.loadingBox = new St.BoxLayout({
+                vertical: false,
+                x_align: Clutter.ActorAlign.CENTER,
+                style_class: 'somafm-popup-loading-box',
+            });
             this.add_child(this.box);
 
             // Volume slider
@@ -93,9 +97,11 @@ const SomaFMPopup = GObject.registerClass(
         setLoading(state) {
             if (!state) {
                 this.loadtxt.hide();
+                this.spinner.stop();
                 this.spinner.hide();
             } else {
                 this.loadtxt.show();
+                this.spinner.play();
                 this.spinner.show();
             }
         }
@@ -118,19 +124,9 @@ const SomaFMPopup = GObject.registerClass(
         }
 
         createUi() {
-            this.spinnerIcon = Gio.File.new_for_uri(
-                "resource:///org/gnome/shell/theme/process-working.svg",
-            );
-            this.spinner = new Animation.AnimatedIcon(this.spinnerIcon, 16);
-            this.spinner.x_align = Clutter.ActorAlign.CENTER;
-            this.spinner.x_expand = true;
-            this.spinner.play();
-            this.spinner.hide();
-            
+            this.spinner = new Animation.Spinner(16);
             this.loadtxt = new St.Label({
                 text: "Loading...",
-                x_align: Clutter.ActorAlign.CENTER,
-                x_expand: true,
             });
             this.loadtxt.hide();
 
@@ -213,9 +209,12 @@ const SomaFMPopup = GObject.registerClass(
                 this.setLoading(false);
                 this.setError(false);
             });
+            
+            this.loadingBox.add_child(this.spinner);
+            this.loadingBox.add_child(this.loadtxt);
+            this.box.add_child(this.loadingBox);
 
-            this.box.add_child(this.spinner);
-            this.box.add_child(this.loadtxt);
+            this.spinner.hide();
         }
 
         stopped() {

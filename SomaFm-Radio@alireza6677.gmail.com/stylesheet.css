@@ -2,3 +2,8 @@
   width: 250px;
   max-width: 250px;
 }
+
+StBoxLayout.somafm-popup-loading-box {
+  spacing: 0.4em;
+  margin-top: 0.5em;
+}
