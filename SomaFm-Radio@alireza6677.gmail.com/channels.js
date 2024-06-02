@@ -213,6 +213,12 @@ export const channels = [
         pic: "/images/reggae400.png",
         num: 33,
     },
+    {
+        name: "Synphaera",
+        link: "http://ice2.somafm.com/synphaera-128-aac",
+        pic: "/images/synphaera.jpg",
+        num: 40,
+    },
 ];
 
 const holidayChannels = [
