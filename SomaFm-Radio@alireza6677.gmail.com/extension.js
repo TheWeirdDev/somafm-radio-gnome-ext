@@ -144,10 +144,12 @@ const SomaFMPopup = GObject.registerClass(
                 style: "padding:5px",
                 x_align: Clutter.ActorAlign.CENTER,
                 x_expand: true,
+                reactive: true,
             });
             this.desc.clutter_text.line_wrap = true;
             this.desc.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
             this.desc.clutter_text.ellipsize = Pango.EllipsizeMode.NONE;
+            this.desc.connect('button-press-event', () => St.Clipboard.get_default().set_text(St.ClipboardType.CLIPBOARD, this.desc.text));
 
             this.box.add_child(this.desc);
 
