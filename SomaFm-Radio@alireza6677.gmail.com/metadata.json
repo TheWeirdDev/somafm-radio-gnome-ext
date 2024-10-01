@@ -4,9 +4,10 @@
   "name": "SomaFM internet radio",
   "shell-version": [
     "45",
-    "46"
+    "46",
+    "47"
   ],
   "url": "http://github.com/TheWeirdDev/somafm-radio-gnome-ext",
   "uuid": "SomaFm-Radio@alireza6677.gmail.com",
-  "version": 40
+  "version": 41
 }
