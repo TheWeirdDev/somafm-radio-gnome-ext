@@ -88,7 +88,7 @@ export const ControlButtons = GObject.registerClass(
 
 export const RadioPlayer = class RadioPlayer {
     constructor(channel) {
-        Gst.init(null);
+        Gst.init([]);
         this.playbin = Gst.ElementFactory.make("playbin", "somafm");
         this.playbin.set_property("uri", channel.getLink());
         this.sink = Gst.ElementFactory.make("pulsesink", "sink");
