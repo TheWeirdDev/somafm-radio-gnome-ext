@@ -100,7 +100,7 @@ export const RadioPlayer = class RadioPlayer {
         this.sink.set_property("client-name", CLIENT_NAME);
         // A dedicated PipeWire target keeps this stream on the selected sink
         // even when the system default output is changed from the mixer.
-        if (preferredSink && this.sink.find_property("target-object"))
+        if (preferredSink)
             this.sink.set_property("target-object", preferredSink);
         this.playbin.set_property("audio-sink", this.sink);
         this.channel = channel;
