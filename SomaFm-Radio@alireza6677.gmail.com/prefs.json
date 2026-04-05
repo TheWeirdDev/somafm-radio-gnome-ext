@@ -1,6 +1,7 @@
  {
     "lastChannel":0,
     "favs":[],
-    "lastVol" : 0.5 
+    "lastVol" : 0.5,
+    "preferredSink": null
  }
  

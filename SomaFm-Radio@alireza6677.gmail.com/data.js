@@ -14,6 +14,7 @@ export function load() {
 		lastChannel: 0,
 		favs: [],
 		lastVol: 0.5,
+		preferredSink: null,
 	};
 
 	create(dir_path);
@@ -46,6 +47,10 @@ export function getLastVol() {
 
 export function getFavs() {
 	return load().favs;
+}
+
+export function getPreferredSink() {
+	return load().preferredSink ?? null;
 }
 
 export function isFav(ch) {
@@ -87,6 +92,7 @@ export function save(lastChannel, lastVol, favs) {
 			typeof lastVol === "number" && isFinite(lastVol)
 				? lastVol.toFixed(2)
 				: 0.5,
+		preferredSink: load().preferredSink ?? null,
 	};
 	Shell.write_string_to_stream(out, JSON.stringify(saveData, null, 4));
 	out.close(null);
