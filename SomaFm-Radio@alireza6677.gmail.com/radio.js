@@ -8,6 +8,7 @@ import St from "gi://St";
 import Clutter from "gi://Clutter";
 
 import * as Channels from "./channels.js";
+import * as Data from "./data.js";
 
 const DEFAULT_VOLUME = 0.5;
 const CLIENT_NAME = "somafm-radio";
@@ -91,9 +92,16 @@ export const RadioPlayer = class RadioPlayer {
         Gst.init([]);
         this.playbin = Gst.ElementFactory.make("playbin", "somafm");
         this.playbin.set_property("uri", channel.getLink());
-        this.sink = Gst.ElementFactory.make("pulsesink", "sink");
+        const preferredSink = Data.getPreferredSink();
+        this.sink = preferredSink
+            ? Gst.ElementFactory.make("pipewiresink", "sink")
+            : Gst.ElementFactory.make("pulsesink", "sink");
 
         this.sink.set_property("client-name", CLIENT_NAME);
+        // A dedicated PipeWire target keeps this stream on the selected sink
+        // even when the system default output is changed from the mixer.
+        if (preferredSink && this.sink.find_property("target-object"))
+            this.sink.set_property("target-object", preferredSink);
         this.playbin.set_property("audio-sink", this.sink);
         this.channel = channel;
         this.setVolume(DEFAULT_VOLUME);
