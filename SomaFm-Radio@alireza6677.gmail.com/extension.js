@@ -17,6 +17,8 @@ import * as Main from "resource:///org/gnome/shell/ui/main.js";
 import * as Channels from "./channels.js";
 import * as Radio from "./radio.js";
 import * as Data from "./data.js";
+import * as Streams from "./streams.js";
+import * as Api from "./somafm-api.js";
 
 // const Extension = imports.misc.extensionUtils.getCurrentExtension();
 
@@ -25,6 +27,10 @@ let button;
 let popup;
 let favs;
 let fav_menu;
+let channels_menu;
+let quality_menu;
+let quality_items = [];
+let cancellable;
 export let extPath;
 
 const SomaFMPopup = GObject.registerClass(
@@ -164,9 +170,7 @@ const SomaFMPopup = GObject.registerClass(
 
             // Channel picture
             this.ch_pic = new St.Icon({
-                gicon: Gio.icon_new_for_string(
-                    extPath + this.player.getChannel().getPic(),
-                ),
+                gicon: this.player.getChannel().getGicon(),
                 style: "padding:10px",
                 icon_size: 100,
                 x_align: Clutter.ActorAlign.CENTER,
@@ -185,23 +189,33 @@ const SomaFMPopup = GObject.registerClass(
             });
 
             this.star.connect("button-press-event", () => {
+                const id = this.player.getChannel().getId();
                 if (this.player.getChannel().isFav()) {
                     this.star.set_icon_name("non-starred-symbolic");
-                    favs.splice(favs.indexOf(this.player.getChannel().getNum()), 1);
+                    favs.splice(favs.indexOf(id), 1);
                     this.player.getChannel().setFav(false);
                 } else {
                     this.star.set_icon_name("starred-symbolic");
-                    favs.push(this.player.getChannel().getNum());
+                    favs.push(id);
                     this.player.getChannel().setFav(true);
                 }
-                Data.save(this.player.getChannel(), this.volume, favs);
+                Data.save(
+                    this.player.getChannel(),
+                    this.volume,
+                    favs,
+                    this.player.getQuality(),
+                );
 
-                // Reload favorites
+                // Rebuild Channel objects so their stars reflect the new favs
+                Channels.invalidate();
                 reloadFavsMenu();
             });
 
             this.box.add_child(this.ch_pic);
             this.box.add_child(this.star);
+
+            // Channels that are only in the live list have no bundled logo.
+            this.setChannelIcon();
 
             // This listener may be still buggy.
             this.player.setOnTagChanged(() => {
@@ -233,14 +247,26 @@ const SomaFMPopup = GObject.registerClass(
             this.setLoading(true);
             this.ch.set_text(this.player.getChannel().getName());
             this.desc.set_text("Soma FM");
-            this.ch_pic.set_gicon(
-                Gio.icon_new_for_string(extPath + this.player.getChannel().getPic()),
-            );
+            this.setChannelIcon();
             this.cfav = this.player.getChannel().isFav();
             this.star.set_icon_name(
                 this.cfav ? "starred-symbolic" : "non-starred-symbolic",
             );
-            Data.save(this.player.getChannel(), this.volume, favs);
+            // The available HLS tiers depend on the channel, and setChannel()
+            // may have degraded the active quality.
+            rebuildQualityMenu();
+            Data.save(
+                this.player.getChannel(),
+                this.volume,
+                favs,
+                this.player.getQuality(),
+            );
+        }
+
+        setChannelIcon() {
+            const ch = this.player.getChannel();
+            this.ch_pic.set_gicon(ch.getGicon());
+            ch.ensureArt(() => this.ch_pic.set_gicon(ch.getGicon()));
         }
         // disconnectAll: function () {
         //     this.mixer.disconnect(this.stream_id);
@@ -249,7 +275,12 @@ const SomaFMPopup = GObject.registerClass(
             this.player.setVolume(slider.value);
             this.volume = slider.value;
             this.setVolIcon(slider.value);
-            Data.save(this.player.getChannel(), this.volume, favs);
+            Data.save(
+                this.player.getChannel(),
+                this.volume,
+                favs,
+                this.player.getQuality(),
+            );
         }
 
         setVolIcon(vol) {
@@ -292,15 +323,17 @@ const SomaFMPanelButton = GObject.registerClass(
 
             reloadFavsMenu();
 
-            let channelsMenu = new PopupMenu.PopupSubMenuMenuItem("Channels");
-            channelsMenu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
-            this.menu.addMenuItem(channelsMenu);
-            
-            Channels.getChannels().forEach((ch) => {
-                channelsMenu.menu.addMenuItem(
-                    new Channels.ChannelBox(ch, player, popup),
-                );
-            });
+            channels_menu = new PopupMenu.PopupSubMenuMenuItem("Channels");
+            channels_menu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
+            this.menu.addMenuItem(channels_menu);
+
+            reloadChannelsMenu();
+
+            quality_menu = new PopupMenu.PopupSubMenuMenuItem("Quality");
+            quality_menu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
+            this.menu.addMenuItem(quality_menu);
+
+            rebuildQualityMenu();
         }
     },
 );
@@ -322,22 +355,128 @@ function reloadFavsMenu() {
     });
 }
 
+function reloadChannelsMenu() {
+    if (channels_menu == null) return;
+
+    channels_menu.menu.removeAll();
+    Channels.getChannels().forEach((ch) => {
+        channels_menu.menu.addMenuItem(new Channels.ChannelBox(ch, player, popup));
+    });
+}
+
+// Rebuilt on every channel change: the experimental HLS tiers exist for Groove
+// Salad only, so the list is per-channel rather than fixed. Never call this
+// from a menu item's own activate handler -- see refreshQualityMenu().
+function rebuildQualityMenu() {
+    if (quality_menu == null || player == null) return;
+
+    quality_menu.menu.removeAll();
+    quality_items = [];
+
+    const addTier = (tier) => {
+        const item = new PopupMenu.PopupMenuItem(tier.label);
+        item.connect("activate", () => setQuality(tier.id));
+        quality_menu.menu.addMenuItem(item);
+        quality_items.push({ id: tier.id, item });
+    };
+
+    Streams.QUALITY_TIERS.forEach(addTier);
+
+    const hls = player.supportsHls()
+        ? Streams.hlsTiersFor(player.getChannel().getId())
+        : [];
+    if (hls.length > 0) {
+        quality_menu.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        hls.forEach(addTier);
+    }
+
+    refreshQualityMenu();
+}
+
+// Updates the label and the selected dot in place. Picking a tier must not
+// rebuild the menu: removeAll() would destroy the very item whose activate
+// signal is still being emitted, and GJS then reports "Object ... has been
+// already disposed" when PopupMenuItem.activate() carries on afterwards.
+function refreshQualityMenu() {
+    if (quality_menu == null || player == null) return;
+
+    const active = player.getQuality();
+    quality_menu.label.text = `Quality: ${Streams.labelFor(
+        player.getChannel().getId(),
+        active,
+    )}`;
+
+    quality_items.forEach(({ id, item }) =>
+        item.setOrnament(
+            id === active ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE,
+        ),
+    );
+}
+
+function setQuality(id) {
+    if (player == null) return;
+
+    const wasPlaying = player.isPlaying();
+    player.setQuality(id);
+    Data.save(player.getChannel(), popup.volume, favs, player.getQuality());
+    refreshQualityMenu();
+
+    if (wasPlaying) {
+        popup.setError(false);
+        popup.setLoading(true);
+    }
+}
+
+// The live list can rename, add or drop channels, so every menu that shows one
+// has to be rebuilt together.
+function onChannelListFetched(list) {
+    if (list == null || !Channels.setChannelList(list)) return;
+
+    reloadChannelsMenu();
+    reloadFavsMenu();
+    rebuildQualityMenu();
+
+    // SomaFM retires stations; the saved one may be gone. Playback is left
+    // alone rather than silently switched, but say so in the log.
+    const id = player.getChannel().getId();
+    if (Channels.getChannelById(id).getId() !== id)
+        console.warn(`SomaFM: channel ${id} is no longer offered upstream`);
+}
+
 export default class SomaFMRadioExtension extends Extension {
     enable() {
         extPath = this.path;
-        player = new Radio.RadioPlayer(Data.getLastChannel());
-        player.setVolume(Data.getLastVol());
+
+        cancellable = new Gio.Cancellable();
+        Channels.setCancellable(cancellable);
 
         favs = Data.getFavs();
         if (favs == null) favs = [];
 
+        // Built from the on-disk cache (or the bundled list) so enable() never
+        // waits on the network.
+        player = new Radio.RadioPlayer(
+            Channels.getChannelById(Data.getLastChannelId()),
+            Data.getQuality(),
+        );
+        player.setVolume(Data.getLastVol());
+
         button = new SomaFMPanelButton(player);
         Main.panel.addToStatusArea("somafm", button);
+
+        if (!Api.isFresh(Api.readCache()))
+            Api.fetchChannels(cancellable, onChannelListFetched);
     }
 
     disable() {
         //popup.disconnectAll();
-        player.stop();
+        cancellable?.cancel();
+        Api.shutdown();
+        Channels.setCancellable(null);
+        Channels.reset();
+        Data.invalidate();
+
+        player.destroy();
         popup.destroy();
         button.destroy();
         favs = null;
@@ -345,5 +484,9 @@ export default class SomaFMRadioExtension extends Extension {
         popup = null;
         player = null;
         fav_menu = null;
+        channels_menu = null;
+        quality_menu = null;
+        quality_items = [];
+        cancellable = null;
     }
 }
