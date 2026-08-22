@@ -8,9 +8,23 @@ import St from "gi://St";
 import Clutter from "gi://Clutter";
 
 import * as Channels from "./channels.js";
+import * as Streams from "./streams.js";
 
 const DEFAULT_VOLUME = 0.5;
 const CLIENT_NAME = "somafm-radio";
+
+// HLS is demuxed by adaptivedemux2, which only works inside a streams-aware
+// pipeline: with the classic "playbin" every HLS URL fails with "Element
+// requires a streams-aware context". playbin3 plays both HLS and the plain
+// Icecast streams, so prefer it and keep playbin purely as a fallback for
+// GStreamer builds that lack it.
+function makePlaybin() {
+    const playbin3 = Gst.ElementFactory.make("playbin3", "somafm");
+    if (playbin3 != null) return { element: playbin3, hls: true };
+
+    console.warn("SomaFM: playbin3 unavailable, HLS tiers disabled");
+    return { element: Gst.ElementFactory.make("playbin", "somafm"), hls: false };
+}
 
 export const ControlButtons = GObject.registerClass(
     {
@@ -87,25 +101,54 @@ export const ControlButtons = GObject.registerClass(
 );
 
 export const RadioPlayer = class RadioPlayer {
-    constructor(channel) {
+    constructor(channel, quality) {
         Gst.init([]);
-        this.playbin = Gst.ElementFactory.make("playbin", "somafm");
-        this.playbin.set_property("uri", channel.getLink());
+
+        const { element, hls } = makePlaybin();
+        this.playbin = element;
+        this.hlsAvailable = hls;
+
+        this.channel = channel;
+        this.quality = Streams.coerceQuality(
+            channel.getId(),
+            quality,
+            this.hlsAvailable,
+        );
+        // Index into the Icecast host ring; advanced by _retryNextHost().
+        this.hostIndex = 0;
+
+        this.playbin.set_property("uri", this._uri());
         this.sink = Gst.ElementFactory.make("pulsesink", "sink");
 
         this.sink.set_property("client-name", CLIENT_NAME);
         this.playbin.set_property("audio-sink", this.sink);
-        this.channel = channel;
         this.setVolume(DEFAULT_VOLUME);
         this.tag = "Soma FM";
 
-        let bus = this.playbin.get_bus();
-        bus.add_signal_watch();
-        bus.connect("message", (bus, msg) => {
+        this.bus = this.playbin.get_bus();
+        this.bus.add_signal_watch();
+        this.busId = this.bus.connect("message", (bus, msg) => {
             if (msg != null) this._onMessageReceived(msg);
         });
         this.onError = null;
         this.onTagChanged = null;
+    }
+
+    // disable() used to only stop playback, leaving the bus watch and its
+    // handler alive; they leaked across every disable/enable cycle.
+    destroy() {
+        this.stop();
+
+        if (this.bus != null) {
+            if (this.busId != null) this.bus.disconnect(this.busId);
+            this.bus.remove_signal_watch();
+            this.bus = null;
+            this.busId = null;
+        }
+        this.onError = null;
+        this.onTagChanged = null;
+        this.playbin = null;
+        this.sink = null;
     }
 
     play() {
@@ -132,26 +175,78 @@ export const RadioPlayer = class RadioPlayer {
     }
 
     next() {
-        let num = this.channel.getNum();
-        num = num >= Channels.channels.length - 1 ? 0 : num + 1;
-        this.setChannel(Channels.getChannel(num));
+        this.setChannel(Channels.neighbour(this.channel.getId(), 1));
     }
 
     prev() {
-        let num = this.channel.getNum();
-        num = num <= 0 ? Channels.channels.length - 1 : num - 1;
-        this.setChannel(Channels.getChannel(num));
+        this.setChannel(Channels.neighbour(this.channel.getId(), -1));
     }
 
     setChannel(ch) {
         this.channel = ch;
+        // The HLS tiers exist for one channel only, so the selected quality
+        // may not be available here. coerceQuality() degrades it instead of
+        // building a URL that would 404.
+        this.quality = Streams.coerceQuality(
+            ch.getId(),
+            this.quality,
+            this.hlsAvailable,
+        );
+        this.hostIndex = 0;
         this.stop();
-        this.playbin.set_property("uri", ch.getLink());
+        this.playbin.set_property("uri", this._uri());
         this.play();
     }
 
     getChannel() {
         return this.channel;
+    }
+
+    getQuality() {
+        return this.quality;
+    }
+
+    supportsHls() {
+        return this.hlsAvailable;
+    }
+
+    setQuality(quality) {
+        const wasPlaying = this.playing;
+        this.quality = Streams.coerceQuality(
+            this.channel.getId(),
+            quality,
+            this.hlsAvailable,
+        );
+        this.hostIndex = 0;
+        this.stop();
+        this.playbin.set_property("uri", this._uri());
+        if (wasPlaying) this.play();
+    }
+
+    _uri() {
+        return Streams.resolveUri(
+            this.channel.getId(),
+            this.quality,
+            this.hostIndex,
+        );
+    }
+
+    // A dead Icecast node used to surface as "--- Error ---" with no retry,
+    // because the stream URL was pinned to a single host. Walk the rest of the
+    // ring before giving up. HLS has one host, so there is nothing to retry.
+    _retryNextHost() {
+        if (!this.playing) return false;
+        if (Streams.isHls(this.quality)) return false;
+        if (this.hostIndex >= Streams.hostCount() - 1) return false;
+
+        this.hostIndex++;
+        const uri = this._uri();
+        console.log(`SomaFM: stream failed, retrying with ${uri}`);
+
+        this.playbin.set_state(Gst.State.NULL);
+        this.playbin.set_property("uri", uri);
+        this.playbin.set_state(Gst.State.PLAYING);
+        return true;
     }
 
     setVolume(value) {
@@ -178,12 +273,16 @@ export const RadioPlayer = class RadioPlayer {
                 break;
 
             case Gst.MessageType.STREAM_START:
+                // Reached a working node; start from the top of the ring on
+                // the next failure.
+                this.hostIndex = 0;
                 if (this.onTagChanged != null) this.onTagChanged();
                 break;
 
             // Both should do the same thing
             case Gst.MessageType.EOS:
             case Gst.MessageType.ERROR:
+                if (this._retryNextHost()) break;
                 this.stop();
                 if (this.onError != null) this.onError();
                 break;

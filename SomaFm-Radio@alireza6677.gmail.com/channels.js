@@ -6,277 +6,140 @@ import Clutter from "gi://Clutter";
 import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 
 import * as Data from "./data.js";
+import * as Api from "./somafm-api.js";
 import { extPath } from "./extension.js";
 
-export const channels = [
-    {
-        name: "Groove Salad",
-        link: "http://ice3.somafm.com/groovesalad-128-aac",
-        pic: "/images/groovesalad.png",
-        num: 0,
-    },
-    {
-        name: "Secret Agent",
-        link: "http://ice3.somafm.com/secretagent-128-aac",
-        pic: "/images/secretagent.jpg",
-        num: 1,
-    },
-    {
-        name: "Lush",
-        link: "http://ice3.somafm.com/lush-128-aac",
-        pic: "/images/lush-x.jpg",
-        num: 2,
-    },
-    {
-        name: "Fluid",
-        link: "http://ice3.somafm.com/fluid-128-aac",
-        pic: "/images/fluid.jpg",
-        num: 3,
-    },
-    {
-        name: "Deep Space One",
-        link: "http://ice3.somafm.com/deepspaceone-128-aac",
-        pic: "/images/deepspaceone.gif",
-        num: 4,
-    },
-    {
-        name: "Drone Zone",
-        link: "http://ice3.somafm.com/dronezone-128-aac",
-        pic: "/images/dronezone.jpg",
-        num: 5,
-    },
-    {
-        name: "Space Station Soma",
-        link: "http://ice3.somafm.com/spacestation-128-aac",
-        pic: "/images/sss.jpg",
-        num: 6,
-    },
-    {
-        name: "DEF CON Radio",
-        link: "http://ice3.somafm.com/defcon-128-aac",
-        pic: "/images/defcon.png",
-        num: 7,
-    },
-    {
-        name: "Sonic Universe",
-        link: "http://ice3.somafm.com/sonicuniverse-128-aac",
-        pic: "/images/sonicuniverse.jpg",
-        num: 8,
-    },
-    {
-        name: "Suburbs of Goa",
-        link: "http://ice3.somafm.com/suburbsofgoa-128-aac",
-        pic: "/images/sog.jpg",
-        num: 9,
-    },
-    {
-        name: "Beat Blender",
-        link: "http://ice3.somafm.com/beatblender-128-aac",
-        pic: "/images/blender.png",
-        num: 10,
-    },
-    {
-        name: "The Trip",
-        link: "http://ice3.somafm.com/thetrip-128-aac",
-        pic: "/images/thetrip.jpg",
-        num: 11,
-    },
-    {
-        name: "Illinois Street Lounge",
-        link: "http://ice3.somafm.com/illstreet-128-aac",
-        pic: "/images/illstreet.jpg",
-        num: 12,
-    },
-    {
-        name: "Seven Inch Soul",
-        link: "http://ice3.somafm.com/7soul-128-aac",
-        pic: "/images/7soul.png",
-        num: 13,
-    },
-    {
-        name: "Left Coast 70s",
-        link: "http://ice3.somafm.com/seventies-128-aac",
-        pic: "/images/seventies.jpg",
-        num: 14,
-    },
-    {
-        name: "Underground 80s",
-        link: "http://ice3.somafm.com/u80s-128-aac",
-        pic: "/images/u80s-.png",
-        num: 15,
-    },
-    {
-        name: "Boot Liquor",
-        link: "http://ice3.somafm.com/bootliquor-128-aac",
-        pic: "/images/bootliquor.jpg",
-        num: 16,
-    },
-    {
-        name: "Digitalis",
-        link: "http://ice3.somafm.com/digitalis-128-aac",
-        pic: "/images/digitalis.png",
-        num: 17,
-    },
-    {
-        name: "ThistleRadio",
-        link: "http://ice3.somafm.com/thistle-128-aac",
-        pic: "/images/thistle.png",
-        num: 18,
-    },
-    {
-        name: "Folk Forward",
-        link: "http://ice3.somafm.com/folkfwd-128-aac",
-        pic: "/images/folkfwd.jpg",
-        num: 19,
-    },
-    {
-        name: "cliqhop idm",
-        link: "http://ice3.somafm.com/cliqhop-128-aac",
-        pic: "/images/cliqhop.png",
-        num: 20,
-    },
-    {
-        name: "PopTron",
-        link: "http://ice3.somafm.com/poptron-128-aac",
-        pic: "/images/poptron.png",
-        num: 21,
-    },
-    {
-        name: "Indie Pop Rocks!",
-        link: "http://ice3.somafm.com/indiepop-128-aac",
-        pic: "/images/indychick.jpg",
-        num: 22,
-    },
-    {
-        name: "BAGeL Radio",
-        link: "http://ice3.somafm.com/bagel-128-aac",
-        pic: "/images/bagel.png",
-        num: 23,
-    },
-    {
-        name: "Metal Detector",
-        link: "http://ice3.somafm.com/metal-128-aac",
-        pic: "/images/metal.png",
-        num: 24,
-    },
-    {
-        name: "Covers",
-        link: "http://ice3.somafm.com/covers-128-aac",
-        pic: "/images/covers.jpg",
-        num: 25,
-    },
-    {
-        name: "Doomed",
-        link: "http://ice3.somafm.com/doomed-128-aac",
-        pic: "/images/doomed.png",
-        num: 26,
-    },
-    {
-        name: "Dub Step Beyond",
-        link: "http://ice3.somafm.com/dubstep-128-aac",
-        pic: "/images/dubstep.png",
-        num: 27,
-    },
-    {
-        name: "Black Rock FM",
-        link: "http://ice3.somafm.com/brfm-128-aac",
-        pic: "/images/1023brc.jpg",
-        num: 28,
-    },
-    {
-        name: "Mission Control",
-        link: "http://ice3.somafm.com/missioncontrol-128-aac",
-        pic: "/images/missioncontrol.jpg",
-        num: 29,
-    },
-    {
-        name: "SF 10-33",
-        link: "http://ice3.somafm.com/sf1033-128-aac",
-        pic: "/images/sf1033.png",
-        num: 30,
-    },
-    {
-        name: "Groove Salad Classic",
-        link: "http://ice2.somafm.com/gsclassic-128-aac",
-        pic: "/images/gsclassic400.jpg",
-        num: 31,
-    },
-    {
-        name: "Vaporwaves",
-        link: "http://ice3.somafm.com/vaporwaves-128-aac",
-        pic: "/images/vaporwaves400.png",
-        num: 32,
-    },
-    {
-        name: "Heavyweight Reggae",
-        link: "http://ice2.somafm.com/reggae-128-aac",
-        pic: "/images/reggae400.png",
-        num: 33,
-    },
+const FALLBACK_ICON = "audio-x-generic-symbolic";
+
+// Set by enable() and cancelled on disable(), so in-flight artwork downloads
+// do not outlive the extension.
+let cancellable = null;
+
+export function setCancellable(c) {
+    cancellable = c;
+}
+
+
+const BUNDLED_CHANNELS = [
+    { id: "groovesalad", name: "Groove Salad", pic: "/images/groovesalad.png" },
+    { id: "secretagent", name: "Secret Agent", pic: "/images/secretagent.jpg" },
+    { id: "lush", name: "Lush", pic: "/images/lush-x.jpg" },
+    { id: "fluid", name: "Fluid", pic: "/images/fluid.jpg" },
+    { id: "deepspaceone", name: "Deep Space One", pic: "/images/deepspaceone.gif" },
+    { id: "dronezone", name: "Drone Zone", pic: "/images/dronezone.jpg" },
+    { id: "spacestation", name: "Space Station Soma", pic: "/images/sss.jpg" },
+    { id: "defcon", name: "DEF CON Radio", pic: "/images/defcon.png" },
+    { id: "sonicuniverse", name: "Sonic Universe", pic: "/images/sonicuniverse.jpg" },
+    { id: "suburbsofgoa", name: "Suburbs of Goa", pic: "/images/sog.jpg" },
+    { id: "beatblender", name: "Beat Blender", pic: "/images/blender.png" },
+    { id: "thetrip", name: "The Trip", pic: "/images/thetrip.jpg" },
+    { id: "illstreet", name: "Illinois Street Lounge", pic: "/images/illstreet.jpg" },
+    { id: "7soul", name: "Seven Inch Soul", pic: "/images/7soul.png" },
+    { id: "seventies", name: "Left Coast 70s", pic: "/images/seventies.jpg" },
+    { id: "u80s", name: "Underground 80s", pic: "/images/u80s-.png" },
+    { id: "bootliquor", name: "Boot Liquor", pic: "/images/bootliquor.jpg" },
+    { id: "digitalis", name: "Digitalis", pic: "/images/digitalis.png" },
+    { id: "thistle", name: "ThistleRadio", pic: "/images/thistle.png" },
+    { id: "folkfwd", name: "Folk Forward", pic: "/images/folkfwd.jpg" },
+    { id: "cliqhop", name: "cliqhop idm", pic: "/images/cliqhop.png" },
+    { id: "poptron", name: "PopTron", pic: "/images/poptron.png" },
+    { id: "indiepop", name: "Indie Pop Rocks!", pic: "/images/indychick.jpg" },
+    { id: "bagel", name: "BAGeL Radio", pic: "/images/bagel.png" },
+    { id: "metal", name: "Metal Detector", pic: "/images/metal.png" },
+    { id: "covers", name: "Covers", pic: "/images/covers.jpg" },
+    { id: "doomed", name: "Doomed", pic: "/images/doomed.png" },
+    { id: "dubstep", name: "Dub Step Beyond", pic: "/images/dubstep.png" },
+    { id: "brfm", name: "Black Rock FM", pic: "/images/1023brc.jpg" },
+    { id: "missioncontrol", name: "Mission Control", pic: "/images/missioncontrol.jpg" },
+    { id: "sf1033", name: "SF 10-33", pic: "/images/sf1033.png" },
+    { id: "gsclassic", name: "Groove Salad Classic", pic: "/images/gsclassic400.jpg" },
+    { id: "vaporwaves", name: "Vaporwaves", pic: "/images/vaporwaves400.png" },
+    { id: "reggae", name: "Heavyweight Reggae", pic: "/images/reggae400.png" },
 ];
 
-const holidayChannels = [
-    {
-        name: "n5MD Radio",
-        link: "http://ice4.somafm.com/n5md-128-aac",
-        pic: "/images/n5md120.png",
-        num: 34,
-    },
-    {
-        name: "Department Store Christmas",
-        link: "http://ice4.somafm.com/deptstore-128-aac",
-        pic: "/images/deptstore120.jpg",
-        num: 35,
-    },
-    {
-        name: "Christmas Lounge",
-        link: "http://ice4.somafm.com/christmas-128-aac",
-        pic: "/images/christmas120.png",
-        num: 36,
-    },
-    {
-        name: "Christmas Rocks!",
-        link: "http://ice4.somafm.com/xmasrocks-128-aac",
-        pic: "/images/xmasrocks120.png",
-        num: 37,
-    },
-    {
-        name: "Xmas in Frisko",
-        link: "http://ice4.somafm.com/xmasinfrisko-128-aac",
-        pic: "/images/xmasinfrisko120.jpg",
-        num: 38,
-    },
-    {
-        name: "Jolly Ol' Soul",
-        link: "http://ice4.somafm.com/jollysoul-128-aac",
-        pic: "/images/jollysoul120.png",
-        num: 39,
-    },
+
+const BUNDLED_HOLIDAY = [
+    { id: "n5md", name: "n5MD Radio", pic: "/images/n5md120.png" },
+    { id: "deptstore", name: "Department Store Christmas", pic: "/images/deptstore120.jpg" },
+    { id: "christmas", name: "Christmas Lounge", pic: "/images/christmas120.png" },
+    { id: "xmasrocks", name: "Christmas Rocks!", pic: "/images/xmasrocks120.png" },
+    { id: "xmasinfrisko", name: "Xmas in Frisko", pic: "/images/xmasinfrisko120.jpg" },
+    { id: "jollysoul", name: "Jolly Ol' Soul", pic: "/images/jollysoul120.png" },
 ];
+
+// Artwork that ships with the extension, so the common channels render
+// instantly and offline. Channels only present in the live list fall back to
+// the downloaded-and-cached logo from the API.
+const BUNDLED_ART = new Map(
+    [...BUNDLED_CHANNELS, ...BUNDLED_HOLIDAY].map((c) => [c.id, c.pic]),
+);
+
+// Holiday channels are seasonal upstream, so the bundled fallback list hides
+// them outside December. The live list needs no such rule: SomaFM adds and
+// removes them itself.
+function bundledList() {
+    const isDecember = new Date().getMonth() === 11;
+    return isDecember
+        ? [...BUNDLED_CHANNELS, ...BUNDLED_HOLIDAY]
+        : [...BUNDLED_CHANNELS];
+}
+
+// Plain descriptors ({id, name, art?}) for the channels currently on offer,
+// and the Channel objects built from them. Both are cached: getChannels() used
+// to rebuild every Channel on every call, and isFav() re-read prefs from disk
+// for each one.
+let descriptors = null;
+let built = null;
+
+function ensureDescriptors() {
+    if (descriptors != null) return descriptors;
+
+    const cached = Api.readCache();
+    descriptors = cached != null ? cached.channels : bundledList();
+    return descriptors;
+}
+
+// Called when the live fetch lands. Returns true if the list actually changed,
+// so the caller can skip rebuilding menus for an identical list.
+export function setChannelList(list) {
+    if (!Array.isArray(list) || list.length === 0) return false;
+
+    const same =
+        descriptors != null &&
+        descriptors.length === list.length &&
+        descriptors.every((d, i) => d.id === list[i].id);
+    if (same) return false;
+
+    descriptors = list;
+    built = null;
+    return true;
+}
+
+// Drops the built Channel objects (not the descriptors) so favorite stars are
+// re-read on the next build.
+export function invalidate() {
+    built = null;
+}
+
+export function reset() {
+    descriptors = null;
+    built = null;
+}
 
 export const Channel = class Channel {
-    constructor(name, link, pic, num, fav) {
+    constructor(id, name, art, fav) {
+        this.id = id;
         this.name = name;
-        this.link = link;
-        this.pic = pic;
-        this.num = num;
+        this.art = art ?? null;
         this.fav = fav;
+    }
+
+    getId() {
+        return this.id;
     }
 
     getName() {
         return this.name;
-    }
-
-    getLink() {
-        return this.link;
-    }
-
-    getPic() {
-        return this.pic;
-    }
-
-    getNum() {
-        return this.num;
     }
 
     isFav() {
@@ -286,7 +149,62 @@ export const Channel = class Channel {
     setFav(f) {
         this.fav = f;
     }
+
+    // Bundled artwork first, then a previously downloaded logo, then a
+    // symbolic placeholder while (or instead of) the download happens.
+    getGicon() {
+        const bundled = BUNDLED_ART.get(this.id);
+        if (bundled != null) return Gio.icon_new_for_string(extPath + bundled);
+
+        if (Api.hasArt(this.id))
+            return Gio.icon_new_for_string(Api.artPath(this.id));
+
+        return new Gio.ThemedIcon({ name: FALLBACK_ICON });
+    }
+
+    // Fetches this channel's logo if it isn't available yet, then calls
+    // onReady() so the caller can refresh whatever is showing the icon.
+    ensureArt(onReady) {
+        if (BUNDLED_ART.has(this.id) || Api.hasArt(this.id) || this.art == null)
+            return;
+
+        Api.fetchArt(this.id, this.art, cancellable, (path) => {
+            if (path != null) onReady();
+        });
+    }
 };
+
+function buildAll() {
+    if (built != null) return built;
+
+    const favs = Data.getFavs();
+    built = ensureDescriptors().map(
+        (c) => new Channel(c.id, c.name, c.art, favs.includes(c.id)),
+    );
+    return built;
+}
+
+export function getChannels() {
+    return buildAll();
+}
+
+export function getFavChannels() {
+    return buildAll().filter((ch) => ch.isFav());
+}
+
+export function getChannelById(id) {
+    const all = buildAll();
+    return all.find((ch) => ch.getId() === id) ?? all[0];
+}
+
+// Channel after (offset +1) or before (-1) the given one, wrapping around.
+// Replaces the old index arithmetic in radio.js, which assumed a fixed list.
+export function neighbour(id, offset) {
+    const all = buildAll();
+    const at = all.findIndex((ch) => ch.getId() === id);
+    const next = (at + offset + all.length) % all.length;
+    return all[next];
+}
 
 export const ChannelBox = GObject.registerClass(
     class ChannelBox extends PopupMenu.PopupBaseMenuItem {
@@ -303,7 +221,7 @@ export const ChannelBox = GObject.registerClass(
             this.add_child(this.vbox);
 
             let icon2 = new St.Icon({
-                gicon: Gio.icon_new_for_string(extPath + channel.getPic()),
+                gicon: channel.getGicon(),
                 style: "margin-right:10px",
                 icon_size: 60,
             });
@@ -317,6 +235,8 @@ export const ChannelBox = GObject.registerClass(
             this.vbox.add_child(icon2);
             this.vbox.add_child(box2);
             box2.add_child(label1);
+
+            channel.ensureArt(() => icon2.set_gicon(channel.getGicon()));
         }
 
         activate(ev) {
@@ -327,29 +247,3 @@ export const ChannelBox = GObject.registerClass(
         }
     },
 );
-
-export function getChannels() {
-    const isDecember = new Date().getMonth() === 11;
-    const allChannels = isDecember ? [...channels, ...holidayChannels] : channels;
-
-    return allChannels.map(
-        (ch) => new Channel(ch.name, ch.link, ch.pic, ch.num, Data.isFav(ch.num)),
-    );
-}
-
-export function getFavChannels() {
-    return getChannels()
-        .filter((ch) => Data.isFav(ch.num))
-        .map((ch) => new Channel(ch.name, ch.link, ch.pic, ch.num, true));
-}
-
-export function getChannel(index) {
-    let item = getChannels()[index] ?? getChannels()[0];
-    return new Channel(
-        item.name,
-        item.link,
-        item.pic,
-        item.num,
-        Data.isFav(item.num),
-    );
-}
