@@ -26,6 +26,20 @@ function makePlaybin() {
     return { element: Gst.ElementFactory.make("playbin", "somafm"), hls: false };
 }
 
+// A tier the channel does not serve answers 404 on every Icecast node, so the
+// host ring is worth skipping in that case. GStreamer reports it as
+// GST_RESOURCE_ERROR_NOT_FOUND, but the mapping of the enum into GJS depends on
+// the build, hence the string check as a backstop.
+function isNotFound(err, debug) {
+    try {
+        if (err?.matches?.(Gst.ResourceError, Gst.ResourceError.NOT_FOUND))
+            return true;
+    } catch (e) {
+        // Error domain not introspectable here; fall through to the text.
+    }
+    return /404|not found/i.test(`${err?.message ?? ""} ${debug ?? ""}`);
+}
+
 export const ControlButtons = GObject.registerClass(
     {
         GTypeName: "ControlButtons",
@@ -132,6 +146,7 @@ export const RadioPlayer = class RadioPlayer {
         });
         this.onError = null;
         this.onTagChanged = null;
+        this.onQualityFallback = null;
     }
 
     // disable() used to only stop playback, leaving the bus watch and its
@@ -147,6 +162,7 @@ export const RadioPlayer = class RadioPlayer {
         }
         this.onError = null;
         this.onTagChanged = null;
+        this.onQualityFallback = null;
         this.playbin = null;
         this.sink = null;
     }
@@ -162,6 +178,12 @@ export const RadioPlayer = class RadioPlayer {
 
     setOnTagChanged(onTagChanged) {
         this.onTagChanged = onTagChanged;
+    }
+
+    // Called as onQualityFallback(from, to) when a tier turns out to be
+    // unplayable and the player steps down on its own.
+    setOnQualityFallback(onQualityFallback) {
+        this.onQualityFallback = onQualityFallback;
     }
 
     setMute(mute) {
@@ -249,6 +271,37 @@ export const RadioPlayer = class RadioPlayer {
         return true;
     }
 
+    // The menu only offers tiers channels.json advertises, but one can still
+    // 404: the cached list may be stale, or it may not have been fetched yet
+    // and the assumed tiers are wrong for this channel. Stepping down one tier
+    // keeps the radio playing instead of dead-ending on "--- Error ---".
+    _degradeQuality(reason) {
+        if (!this.playing) return false;
+
+        const from = this.quality;
+        const to = Streams.lowerQuality(
+            this.channel.getId(),
+            from,
+            this.hlsAvailable,
+        );
+        if (to == null || to === from) return false;
+
+        const id = this.channel.getId();
+        console.warn(
+            `SomaFM: ${Streams.labelFor(id, from)} unavailable on ${id} ` +
+                `(${reason}), falling back to ${Streams.labelFor(id, to)}`,
+        );
+
+        this.quality = to;
+        this.hostIndex = 0;
+        this.playbin.set_state(Gst.State.NULL);
+        this.playbin.set_property("uri", this._uri());
+        this.playbin.set_state(Gst.State.PLAYING);
+
+        if (this.onQualityFallback != null) this.onQualityFallback(from, to);
+        return true;
+    }
+
     setVolume(value) {
         //this.playbin.set_volume(GstAudio.StreamVolumeFormat.LINEAR, value);
         this.playbin.volume = value;
@@ -279,9 +332,23 @@ export const RadioPlayer = class RadioPlayer {
                 if (this.onTagChanged != null) this.onTagChanged();
                 break;
 
-            // Both should do the same thing
+            case Gst.MessageType.ERROR: {
+                // A 404 means this tier does not exist on this channel, so
+                // every node will answer the same: step down instead of
+                // walking the ring. Any other failure (dead node, no network)
+                // is per-host, and stepping down would not help.
+                const [err, debug] = msg.parse_error();
+                if (isNotFound(err, debug)) {
+                    if (this._degradeQuality("404")) break;
+                } else if (this._retryNextHost()) {
+                    break;
+                }
+                this.stop();
+                if (this.onError != null) this.onError();
+                break;
+            }
+
             case Gst.MessageType.EOS:
-            case Gst.MessageType.ERROR:
                 if (this._retryNextHost()) break;
                 this.stop();
                 if (this.onError != null) this.onError();

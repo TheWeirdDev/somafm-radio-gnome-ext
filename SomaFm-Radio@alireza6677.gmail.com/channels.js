@@ -7,9 +7,26 @@ import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 
 import * as Data from "./data.js";
 import * as Api from "./somafm-api.js";
+import * as Streams from "./streams.js";
 import { extPath } from "./extension.js";
 
 const FALLBACK_ICON = "audio-x-generic-symbolic";
+
+// SomaFM tags each channel with one or more genres, pipe-separated in
+// channels.json ("bossanova|world"). The bundled fallback list carries none, so
+// the genre menu stays empty until the live list arrives.
+function parseGenres(raw) {
+    if (typeof raw !== "string") return [];
+
+    return [
+        ...new Set(
+            raw
+                .split(/[|,]/)
+                .map((g) => g.trim().toLowerCase())
+                .filter((g) => g !== ""),
+        ),
+    ];
+}
 
 // Set by enable() and cancelled on disable(), so in-flight artwork downloads
 // do not outlive the extension.
@@ -96,6 +113,9 @@ function ensureDescriptors() {
 
     const cached = Api.readCache();
     descriptors = cached != null ? cached.channels : bundledList();
+    // The bundled list carries no `qualities`, so streams.js keeps assuming
+    // the usual four tiers until a fetch lands.
+    Streams.registerQualities(descriptors);
     return descriptors;
 }
 
@@ -103,6 +123,10 @@ function ensureDescriptors() {
 // so the caller can skip rebuilding menus for an identical list.
 export function setChannelList(list) {
     if (!Array.isArray(list) || list.length === 0) return false;
+
+    // Tier availability is refreshed even when the list itself is unchanged:
+    // SomaFM can add a bitrate to a channel without adding channels.
+    Streams.registerQualities(list);
 
     const same =
         descriptors != null &&
@@ -124,14 +148,16 @@ export function invalidate() {
 export function reset() {
     descriptors = null;
     built = null;
+    Streams.resetQualities();
 }
 
 export const Channel = class Channel {
-    constructor(id, name, art, fav) {
+    constructor(id, name, art, fav, genres) {
         this.id = id;
         this.name = name;
         this.art = art ?? null;
         this.fav = fav;
+        this.genres = genres ?? [];
     }
 
     getId() {
@@ -144,6 +170,14 @@ export const Channel = class Channel {
 
     isFav() {
         return this.fav;
+    }
+
+    getGenres() {
+        return this.genres;
+    }
+
+    hasGenre(tag) {
+        return this.genres.includes(tag);
     }
 
     setFav(f) {
@@ -179,13 +213,39 @@ function buildAll() {
 
     const favs = Data.getFavs();
     built = ensureDescriptors().map(
-        (c) => new Channel(c.id, c.name, c.art, favs.includes(c.id)),
+        (c) =>
+            new Channel(
+                c.id,
+                c.name,
+                c.art,
+                favs.includes(c.id),
+                parseGenres(c.genre),
+            ),
     );
     return built;
 }
 
 export function getChannels() {
     return buildAll();
+}
+
+// Every genre in the current list with its channel count, alphabetical. A
+// channel with several tags is counted under each of them.
+export function getGenres() {
+    const counts = new Map();
+    for (const ch of buildAll())
+        for (const g of ch.getGenres()) counts.set(g, (counts.get(g) ?? 0) + 1);
+
+    return [...counts]
+        .map(([tag, count]) => ({ tag, count }))
+        .sort((a, b) => a.tag.localeCompare(b.tag));
+}
+
+// An empty tag means "all genres", which is also the fallback for a tag SomaFM
+// has stopped using.
+export function getChannelsByGenre(tag) {
+    if (tag == null || tag === "") return buildAll();
+    return buildAll().filter((ch) => ch.hasGenre(tag));
 }
 
 export function getFavChannels() {

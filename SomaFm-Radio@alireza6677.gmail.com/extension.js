@@ -28,10 +28,49 @@ let popup;
 let favs;
 let fav_menu;
 let channels_menu;
+let genre_menu;
+let genre_items = [];
+let genre = "";
 let quality_menu;
 let quality_items = [];
 let cancellable;
 export let extPath;
+
+// Selecting a quality must not close the panel, the way selecting a channel
+// does not: PopupMenu closes the whole menu as soon as an item emits
+// "activate", so the handler runs here instead of via super.activate().
+const QualityItem = GObject.registerClass(
+    {
+        GTypeName: "SomaFMQualityItem",
+    },
+    class extends PopupMenu.PopupMenuItem {
+        _init(tier) {
+            super._init(tier.label);
+            this.tierId = tier.id;
+        }
+
+        activate(_event) {
+            setQuality(this.tierId);
+        }
+    },
+);
+
+// Same contract as QualityItem: filtering the list must not close the panel.
+const GenreItem = GObject.registerClass(
+    {
+        GTypeName: "SomaFMGenreItem",
+    },
+    class extends PopupMenu.PopupMenuItem {
+        _init(tag, label) {
+            super._init(label);
+            this.tag = tag;
+        }
+
+        activate(_event) {
+            setGenre(this.tag);
+        }
+    },
+);
 
 const SomaFMPopup = GObject.registerClass(
     {
@@ -110,6 +149,20 @@ const SomaFMPopup = GObject.registerClass(
                 this.spinner.play();
                 this.spinner.show();
             }
+        }
+
+        // A non-fatal message under the controls; cleared by the next channel
+        // or quality change rather than by the next stream event, so a
+        // fallback does not flash past unread.
+        setNotice(text) {
+            if (this.notice == null) return;
+
+            if (text == null || text === "") {
+                this.notice.hide();
+                return;
+            }
+            this.notice.set_text(text);
+            this.notice.show();
         }
 
         setError(state) {
@@ -230,6 +283,34 @@ const SomaFMPopup = GObject.registerClass(
             this.loadingBox.add_child(this.loadtxt);
             this.box.add_child(this.loadingBox);
 
+            // Explains an automatic quality step-down, e.g. when a channel
+            // turns out not to serve the selected bitrate.
+            this.notice = new St.Label({
+                text: "",
+                style_class: "somafm-popup-notice",
+                x_align: Clutter.ActorAlign.CENTER,
+                x_expand: true,
+            });
+            this.notice.clutter_text.line_wrap = true;
+            this.notice.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+            this.box.add_child(this.notice);
+            this.notice.hide();
+
+            this.player.setOnQualityFallback((from, to) => {
+                const id = this.player.getChannel().getId();
+                this.setNotice(
+                    `${Streams.labelFor(id, from)} unavailable here — ` +
+                        `playing ${Streams.labelFor(id, to)}`,
+                );
+                refreshQualityMenu();
+                Data.save(
+                    this.player.getChannel(),
+                    this.volume,
+                    favs,
+                    this.player.getQuality(),
+                );
+            });
+
             this.spinner.hide();
         }
 
@@ -245,6 +326,7 @@ const SomaFMPopup = GObject.registerClass(
             this.controlbtns.playing = true;
             this.setLoading(false);
             this.setLoading(true);
+            this.setNotice(null);
             this.ch.set_text(this.player.getChannel().getName());
             this.desc.set_text("Soma FM");
             this.setChannelIcon();
@@ -329,6 +411,12 @@ const SomaFMPanelButton = GObject.registerClass(
 
             reloadChannelsMenu();
 
+            genre_menu = new PopupMenu.PopupSubMenuMenuItem("Genre");
+            genre_menu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
+            this.menu.addMenuItem(genre_menu);
+
+            rebuildGenreMenu();
+
             quality_menu = new PopupMenu.PopupSubMenuMenuItem("Quality");
             quality_menu.menu.actor.add_style_class_name("somafm-popup-sub-menu");
             this.menu.addMenuItem(quality_menu);
@@ -359,14 +447,79 @@ function reloadChannelsMenu() {
     if (channels_menu == null) return;
 
     channels_menu.menu.removeAll();
-    Channels.getChannels().forEach((ch) => {
+
+    const chs = Channels.getChannelsByGenre(genre);
+    if (chs.length < 1) {
+        const empty = new PopupMenu.PopupBaseMenuItem({ reactive: false });
+        empty.add_child(new St.Label({ text: "Empty" }));
+        channels_menu.menu.addMenuItem(empty);
+        return;
+    }
+
+    chs.forEach((ch) => {
         channels_menu.menu.addMenuItem(new Channels.ChannelBox(ch, player, popup));
     });
 }
 
-// Rebuilt on every channel change: the experimental HLS tiers exist for Groove
-// Salad only, so the list is per-channel rather than fixed. Never call this
-// from a menu item's own activate handler -- see refreshQualityMenu().
+// Rebuilt whenever the channel list changes, since the tags and their counts
+// come from it. Never call this from a genre item's own activate handler --
+// see refreshGenreMenu().
+function rebuildGenreMenu() {
+    if (genre_menu == null) return;
+
+    const tags = Channels.getGenres();
+    // The bundled fallback list has no genres. Keep a saved filter in that
+    // case rather than dropping it before the live list arrives.
+    if (tags.length > 0 && genre !== "" && !tags.some((t) => t.tag === genre)) {
+        console.log(`SomaFM: genre ${genre} is no longer used upstream`);
+        genre = "";
+        Data.setGenre(genre);
+    }
+
+    genre_menu.menu.removeAll();
+    genre_items = [];
+
+    const addTag = (tag, label) => {
+        const item = new GenreItem(tag, label);
+        genre_menu.menu.addMenuItem(item);
+        genre_items.push({ tag, item });
+    };
+
+    addTag("", `All (${Channels.getChannels().length})`);
+    if (tags.length > 0) {
+        genre_menu.menu.addMenuItem(new PopupMenu.PopupSeparatorMenuItem());
+        tags.forEach((t) => addTag(t.tag, `${t.tag} (${t.count})`));
+    }
+
+    refreshGenreMenu();
+}
+
+// Label and selected dot only, for the same reason refreshQualityMenu() exists:
+// removeAll() from an item's activate handler destroys the item mid-signal.
+function refreshGenreMenu() {
+    if (genre_menu == null) return;
+
+    genre_menu.label.text = `Genre: ${genre === "" ? "All" : genre}`;
+    genre_items.forEach(({ tag, item }) =>
+        item.setOrnament(
+            tag === genre ? PopupMenu.Ornament.DOT : PopupMenu.Ornament.NONE,
+        ),
+    );
+}
+
+function setGenre(tag) {
+    genre = tag;
+    Data.setGenre(genre);
+    // Rebuilding the channels menu from here is safe: it is not the menu whose
+    // activate signal is being emitted.
+    reloadChannelsMenu();
+    refreshGenreMenu();
+}
+
+// Rebuilt on every channel change: SomaFM serves different bitrates on
+// different channels, and the experimental HLS tiers exist for Groove Salad
+// only, so the list is per-channel rather than fixed. Never call this from a
+// menu item's own activate handler -- see refreshQualityMenu().
 function rebuildQualityMenu() {
     if (quality_menu == null || player == null) return;
 
@@ -374,13 +527,12 @@ function rebuildQualityMenu() {
     quality_items = [];
 
     const addTier = (tier) => {
-        const item = new PopupMenu.PopupMenuItem(tier.label);
-        item.connect("activate", () => setQuality(tier.id));
+        const item = new QualityItem(tier);
         quality_menu.menu.addMenuItem(item);
         quality_items.push({ id: tier.id, item });
     };
 
-    Streams.QUALITY_TIERS.forEach(addTier);
+    Streams.iceTiersFor(player.getChannel().getId()).forEach(addTier);
 
     const hls = player.supportsHls()
         ? Streams.hlsTiersFor(player.getChannel().getId())
@@ -417,6 +569,7 @@ function setQuality(id) {
     if (player == null) return;
 
     const wasPlaying = player.isPlaying();
+    popup?.setNotice(null);
     player.setQuality(id);
     Data.save(player.getChannel(), popup.volume, favs, player.getQuality());
     refreshQualityMenu();
@@ -434,6 +587,7 @@ function onChannelListFetched(list) {
 
     reloadChannelsMenu();
     reloadFavsMenu();
+    rebuildGenreMenu();
     rebuildQualityMenu();
 
     // SomaFM retires stations; the saved one may be gone. Playback is left
@@ -452,6 +606,7 @@ export default class SomaFMRadioExtension extends Extension {
 
         favs = Data.getFavs();
         if (favs == null) favs = [];
+        genre = Data.getGenre() ?? "";
 
         // Built from the on-disk cache (or the bundled list) so enable() never
         // waits on the network.
@@ -485,6 +640,9 @@ export default class SomaFMRadioExtension extends Extension {
         player = null;
         fav_menu = null;
         channels_menu = null;
+        genre_menu = null;
+        genre_items = [];
+        genre = "";
         quality_menu = null;
         quality_items = [];
         cancellable = null;

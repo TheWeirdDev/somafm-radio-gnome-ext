@@ -7,3 +7,9 @@ StBoxLayout.somafm-popup-loading-box {
   spacing: 0.4em;
   margin-top: 0.5em;
 }
+
+StLabel.somafm-popup-notice {
+  font-size: 0.9em;
+  padding: 0.2em 0.5em;
+  color: #bbbbbb;
+}
