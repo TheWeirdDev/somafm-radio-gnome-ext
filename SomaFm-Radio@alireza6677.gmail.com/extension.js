@@ -33,6 +33,25 @@ let quality_items = [];
 let cancellable;
 export let extPath;
 
+// Selecting a quality must not close the panel, the way selecting a channel
+// does not: PopupMenu closes the whole menu as soon as an item emits
+// "activate", so the handler runs here instead of via super.activate().
+const QualityItem = GObject.registerClass(
+    {
+        GTypeName: "SomaFMQualityItem",
+    },
+    class extends PopupMenu.PopupMenuItem {
+        _init(tier) {
+            super._init(tier.label);
+            this.tierId = tier.id;
+        }
+
+        activate(_event) {
+            setQuality(this.tierId);
+        }
+    },
+);
+
 const SomaFMPopup = GObject.registerClass(
     {
         GTypeName: "SomaFMPopup",
@@ -110,6 +129,20 @@ const SomaFMPopup = GObject.registerClass(
                 this.spinner.play();
                 this.spinner.show();
             }
+        }
+
+        // A non-fatal message under the controls; cleared by the next channel
+        // or quality change rather than by the next stream event, so a
+        // fallback does not flash past unread.
+        setNotice(text) {
+            if (this.notice == null) return;
+
+            if (text == null || text === "") {
+                this.notice.hide();
+                return;
+            }
+            this.notice.set_text(text);
+            this.notice.show();
         }
 
         setError(state) {
@@ -230,6 +263,34 @@ const SomaFMPopup = GObject.registerClass(
             this.loadingBox.add_child(this.loadtxt);
             this.box.add_child(this.loadingBox);
 
+            // Explains an automatic quality step-down, e.g. when a channel
+            // turns out not to serve the selected bitrate.
+            this.notice = new St.Label({
+                text: "",
+                style_class: "somafm-popup-notice",
+                x_align: Clutter.ActorAlign.CENTER,
+                x_expand: true,
+            });
+            this.notice.clutter_text.line_wrap = true;
+            this.notice.clutter_text.line_wrap_mode = Pango.WrapMode.WORD_CHAR;
+            this.box.add_child(this.notice);
+            this.notice.hide();
+
+            this.player.setOnQualityFallback((from, to) => {
+                const id = this.player.getChannel().getId();
+                this.setNotice(
+                    `${Streams.labelFor(id, from)} unavailable here — ` +
+                        `playing ${Streams.labelFor(id, to)}`,
+                );
+                refreshQualityMenu();
+                Data.save(
+                    this.player.getChannel(),
+                    this.volume,
+                    favs,
+                    this.player.getQuality(),
+                );
+            });
+
             this.spinner.hide();
         }
 
@@ -245,6 +306,7 @@ const SomaFMPopup = GObject.registerClass(
             this.controlbtns.playing = true;
             this.setLoading(false);
             this.setLoading(true);
+            this.setNotice(null);
             this.ch.set_text(this.player.getChannel().getName());
             this.desc.set_text("Soma FM");
             this.setChannelIcon();
@@ -364,9 +426,10 @@ function reloadChannelsMenu() {
     });
 }
 
-// Rebuilt on every channel change: the experimental HLS tiers exist for Groove
-// Salad only, so the list is per-channel rather than fixed. Never call this
-// from a menu item's own activate handler -- see refreshQualityMenu().
+// Rebuilt on every channel change: SomaFM serves different bitrates on
+// different channels, and the experimental HLS tiers exist for Groove Salad
+// only, so the list is per-channel rather than fixed. Never call this from a
+// menu item's own activate handler -- see refreshQualityMenu().
 function rebuildQualityMenu() {
     if (quality_menu == null || player == null) return;
 
@@ -374,13 +437,12 @@ function rebuildQualityMenu() {
     quality_items = [];
 
     const addTier = (tier) => {
-        const item = new PopupMenu.PopupMenuItem(tier.label);
-        item.connect("activate", () => setQuality(tier.id));
+        const item = new QualityItem(tier);
         quality_menu.menu.addMenuItem(item);
         quality_items.push({ id: tier.id, item });
     };
 
-    Streams.QUALITY_TIERS.forEach(addTier);
+    Streams.iceTiersFor(player.getChannel().getId()).forEach(addTier);
 
     const hls = player.supportsHls()
         ? Streams.hlsTiersFor(player.getChannel().getId())
@@ -417,6 +479,7 @@ function setQuality(id) {
     if (player == null) return;
 
     const wasPlaying = player.isPlaying();
+    popup?.setNotice(null);
     player.setQuality(id);
     Data.save(player.getChannel(), popup.volume, favs, player.getQuality());
     refreshQualityMenu();

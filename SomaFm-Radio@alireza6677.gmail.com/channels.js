@@ -7,6 +7,7 @@ import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 
 import * as Data from "./data.js";
 import * as Api from "./somafm-api.js";
+import * as Streams from "./streams.js";
 import { extPath } from "./extension.js";
 
 const FALLBACK_ICON = "audio-x-generic-symbolic";
@@ -96,6 +97,9 @@ function ensureDescriptors() {
 
     const cached = Api.readCache();
     descriptors = cached != null ? cached.channels : bundledList();
+    // The bundled list carries no `qualities`, so streams.js keeps assuming
+    // the usual four tiers until a fetch lands.
+    Streams.registerQualities(descriptors);
     return descriptors;
 }
 
@@ -103,6 +107,10 @@ function ensureDescriptors() {
 // so the caller can skip rebuilding menus for an identical list.
 export function setChannelList(list) {
     if (!Array.isArray(list) || list.length === 0) return false;
+
+    // Tier availability is refreshed even when the list itself is unchanged:
+    // SomaFM can add a bitrate to a channel without adding channels.
+    Streams.registerQualities(list);
 
     const same =
         descriptors != null &&
@@ -124,6 +132,7 @@ export function invalidate() {
 export function reset() {
     descriptors = null;
     built = null;
+    Streams.resetQualities();
 }
 
 export const Channel = class Channel {

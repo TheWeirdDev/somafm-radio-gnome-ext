@@ -7,11 +7,16 @@ import Gio from "gi://Gio";
 import GLib from "gi://GLib";
 import Soup from "gi://Soup?version=3.0";
 
+import * as Streams from "./streams.js";
+
 const CHANNELS_URL = "https://somafm.com/channels.json";
 const CACHE_FILE = "channels-cache.json";
 const ART_DIR = "art";
 const DIR_NAME = ".somafm-radio";
 const CACHE_TTL = 24 * 60 * 60; // seconds
+// Bumped when the cached shape changes, so an old cache is refetched instead of
+// read back missing fields. v2 added per-channel stream qualities.
+const CACHE_VERSION = 2;
 const USER_AGENT = "somafm-radio-gnome-ext";
 
 let session = null;
@@ -55,12 +60,18 @@ function normalize(raw) {
     if (typeof raw?.id !== "string" || raw.id === "") return null;
     if (!Array.isArray(raw.playlists) || raw.playlists.length === 0) return null;
 
+    // Which bitrates this channel actually serves. Kept in the cache so the
+    // Quality menu is right offline too.
+    const qualities = Streams.qualitiesFromPlaylists(raw.id, raw.playlists);
+    if (qualities.length === 0) return null;
+
     return {
         id: raw.id,
         name: typeof raw.title === "string" && raw.title !== "" ? raw.title : raw.id,
         art: raw.largeimage ?? raw.image ?? raw.xlimage ?? null,
         genre: raw.genre ?? "",
         description: raw.description ?? "",
+        qualities,
     };
 }
 
@@ -87,7 +98,8 @@ export function readCache() {
         if (!ok) return null;
 
         const cached = JSON.parse(new TextDecoder().decode(bytes));
-        if (!Array.isArray(cached?.channels) || cached.channels.length === 0)
+        if (cached?.version !== CACHE_VERSION) return null;
+        if (!Array.isArray(cached.channels) || cached.channels.length === 0)
             return null;
 
         return {
@@ -111,6 +123,7 @@ function writeCache(channels) {
 
     const path = GLib.build_filenamev([cacheDir(), CACHE_FILE]);
     const payload = JSON.stringify({
+        version: CACHE_VERSION,
         fetchedAt: GLib.DateTime.new_now_utc().to_unix(),
         channels,
     });
