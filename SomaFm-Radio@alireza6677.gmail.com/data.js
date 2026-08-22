@@ -63,6 +63,8 @@ const DEFAULTS = {
 	favs: [],
 	lastVol: 0.5,
 	quality: DEFAULT_QUALITY,
+	// Genre filter for the channel list; "" means all genres.
+	genre: "",
 };
 
 // prefs used to be re-read from disk by every getter, which meant one file read
@@ -94,6 +96,8 @@ function migrate(raw) {
 			lastVol: clampVol(raw.lastVol),
 			quality:
 				typeof raw.quality === "string" ? raw.quality : DEFAULTS.quality,
+			// Added after v2 shipped, so a file without it is not a migration.
+			genre: typeof raw.genre === "string" ? raw.genre : DEFAULTS.genre,
 		};
 	}
 
@@ -110,6 +114,7 @@ function migrate(raw) {
 			: [],
 		lastVol: clampVol(raw.lastVol),
 		quality: DEFAULTS.quality,
+		genre: DEFAULTS.genre,
 	};
 
 	console.log(
@@ -164,6 +169,10 @@ export function getQuality() {
 	return load().quality;
 }
 
+export function getGenre() {
+	return load().genre;
+}
+
 export function getFavs() {
 	return load().favs;
 }
@@ -215,7 +224,16 @@ export function save(channel, lastVol, favs, quality) {
 		favs: Array.isArray(favs) ? favs : current.favs,
 		lastVol: clampVol(lastVol),
 		quality: typeof quality === "string" ? quality : current.quality,
+		genre: current.genre,
 	};
+	cache = data;
+	write(data);
+}
+
+// The genre filter is the only setting not tied to playback, so it writes
+// through on its own rather than joining save()'s argument list.
+export function setGenre(tag) {
+	const data = { ...load(), genre: typeof tag === "string" ? tag : "" };
 	cache = data;
 	write(data);
 }
