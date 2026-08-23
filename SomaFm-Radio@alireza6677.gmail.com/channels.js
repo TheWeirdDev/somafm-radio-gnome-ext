@@ -191,16 +191,22 @@ export const Channel = class Channel {
         const bundled = BUNDLED_ART.get(this.id);
         if (bundled != null) return Gio.icon_new_for_string(extPath + bundled);
 
-        if (Api.hasArt(this.id))
+        if (Api.isArtCached(this.id))
             return Gio.icon_new_for_string(Api.artPath(this.id));
 
         return new Gio.ThemedIcon({ name: FALLBACK_ICON });
     }
 
-    // Fetches this channel's logo if it isn't available yet, then calls
-    // onReady() so the caller can refresh whatever is showing the icon.
+    // Resolves this channel's logo -- from the disk cache, or once from the
+    // network -- then calls onReady() so the caller can replace the
+    // placeholder. Neither step is synchronous, so the icon can arrive after
+    // the menu item is already on screen.
     ensureArt(onReady) {
-        if (BUNDLED_ART.has(this.id) || Api.hasArt(this.id) || this.art == null)
+        if (
+            BUNDLED_ART.has(this.id) ||
+            Api.isArtCached(this.id) ||
+            this.art == null
+        )
             return;
 
         Api.fetchArt(this.id, this.art, cancellable, (path) => {
@@ -303,7 +309,14 @@ export const ChannelBox = GObject.registerClass(
             this.vbox.add_child(box2);
             box2.add_child(label1);
 
-            channel.ensureArt(() => icon2.set_gicon(channel.getGicon()));
+            // The logo can land after this row is gone: every menu holding a
+            // channel is rebuilt when the list, the favorites or the genre
+            // filter change.
+            let alive = true;
+            this.connect("destroy", () => (alive = false));
+            channel.ensureArt(() => {
+                if (alive) icon2.set_gicon(channel.getGicon());
+            });
         }
 
         activate(ev) {

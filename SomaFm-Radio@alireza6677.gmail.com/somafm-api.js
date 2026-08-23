@@ -20,6 +20,10 @@ const CACHE_VERSION = 2;
 const USER_AGENT = "somafm-radio-gnome-ext";
 
 let session = null;
+// Channel ids whose logo is known to be on disk. Built up as artwork is looked
+// up or downloaded, so getGicon() never has to stat a file while the menus are
+// being built.
+const artOnDisk = new Set();
 
 function getSession() {
     if (session == null) {
@@ -33,6 +37,7 @@ export function shutdown() {
         session.abort();
         session = null;
     }
+    artOnDisk.clear();
 }
 
 function cacheDir() {
@@ -43,15 +48,27 @@ function artDir() {
     return GLib.build_filenamev([cacheDir(), ART_DIR]);
 }
 
-function ensureDir(path) {
-    try {
-        const dir = Gio.file_new_for_path(path);
-        if (!dir.query_exists(null)) dir.make_directory_with_parents(null);
-        return true;
-    } catch (e) {
-        console.error(`SomaFM: cannot create ${path}: ${e}`);
-        return false;
-    }
+// make_directory_with_parents() has no async form, so the two levels this
+// extension needs are created one at a time. An existing directory is the
+// normal case, not an error.
+function makeDir(path, onDone) {
+    Gio.file_new_for_path(path).make_directory_async(
+        GLib.PRIORITY_DEFAULT,
+        null,
+        (dir, res) => {
+            try {
+                dir.make_directory_finish(res);
+            } catch (e) {
+                if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.EXISTS))
+                    console.error(`SomaFM: cannot create ${path}: ${e}`);
+            }
+            onDone();
+        },
+    );
+}
+
+function ensureArtDir(onDone) {
+    makeDir(cacheDir(), () => makeDir(artDir(), onDone));
 }
 
 // One channel from the API, reduced to what the UI needs. `pic` is left null:
@@ -131,27 +148,27 @@ export function isFresh(cache) {
 }
 
 function writeCache(channels) {
-    if (!ensureDir(cacheDir())) return;
-
     const path = GLib.build_filenamev([cacheDir(), CACHE_FILE]);
     const payload = JSON.stringify({
         version: CACHE_VERSION,
         fetchedAt: GLib.DateTime.new_now_utc().to_unix(),
         channels,
     });
-    Gio.file_new_for_path(path).replace_contents_async(
-        new TextEncoder().encode(payload),
-        null,
-        false,
-        Gio.FileCreateFlags.REPLACE_DESTINATION,
-        null,
-        (self, res) => {
-            try {
-                self.replace_contents_finish(res);
-            } catch (e) {
-                console.error(`SomaFM: cannot write channel cache: ${e}`);
-            }
-        },
+    makeDir(cacheDir(), () =>
+        Gio.file_new_for_path(path).replace_contents_async(
+            new TextEncoder().encode(payload),
+            null,
+            false,
+            Gio.FileCreateFlags.REPLACE_DESTINATION,
+            null,
+            (self, res) => {
+                try {
+                    self.replace_contents_finish(res);
+                } catch (e) {
+                    console.error(`SomaFM: cannot write channel cache: ${e}`);
+                }
+            },
+        ),
     );
 }
 
@@ -190,25 +207,49 @@ export function artPath(id) {
     return GLib.build_filenamev([artDir(), `${id}.img`]);
 }
 
-export function hasArt(id) {
-    return Gio.file_new_for_path(artPath(id)).query_exists(null);
+// Answered from memory: whether a previous lookup or download put this
+// channel's logo on disk. False just means "not known yet", and fetchArt()
+// settles it without blocking.
+export function isArtCached(id) {
+    return artOnDisk.has(id);
 }
 
-// Downloads artwork once and caches it. onDone(path | null).
+// Downloads artwork once and caches it. onDone(path | null). Anything already
+// on disk is reported without a download; the check itself is async, so a menu
+// build never waits on it.
 export function fetchArt(id, url, cancellable, onDone) {
     if (typeof url !== "string" || url === "") {
         onDone(null);
         return;
     }
-    if (hasArt(id)) {
+    if (artOnDisk.has(id)) {
         onDone(artPath(id));
         return;
     }
-    if (!ensureDir(artDir())) {
-        onDone(null);
-        return;
-    }
 
+    Gio.file_new_for_path(artPath(id)).query_info_async(
+        Gio.FILE_ATTRIBUTE_STANDARD_TYPE,
+        Gio.FileQueryInfoFlags.NONE,
+        GLib.PRIORITY_LOW,
+        cancellable,
+        (file, res) => {
+            try {
+                file.query_info_finish(res);
+                artOnDisk.add(id);
+                onDone(artPath(id));
+                return;
+            } catch (e) {
+                if (e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)) {
+                    onDone(null);
+                    return;
+                }
+            }
+            ensureArtDir(() => downloadArt(id, url, cancellable, onDone));
+        },
+    );
+}
+
+function downloadArt(id, url, cancellable, onDone) {
     const msg = Soup.Message.new("GET", url);
     getSession().send_and_read_async(
         msg,
@@ -233,6 +274,7 @@ export function fetchArt(id, url, cancellable, onDone) {
                     (file, r) => {
                         try {
                             file.replace_contents_finish(r);
+                            artOnDisk.add(id);
                             onDone(artPath(id));
                         } catch (e2) {
                             console.error(

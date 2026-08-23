@@ -123,6 +123,8 @@ const SomaFMPopup = GObject.registerClass(
             this.box.add_child(this.volBox);
 
             this.err = null;
+            this._destroyed = false;
+            this.connect("destroy", () => (this._destroyed = true));
             this.createUi();
         }
 
@@ -354,7 +356,11 @@ const SomaFMPopup = GObject.registerClass(
         setChannelIcon() {
             const ch = this.player.getChannel();
             this.ch_pic.set_gicon(ch.getGicon());
-            ch.ensureArt(() => this.ch_pic.set_gicon(ch.getGicon()));
+            // The logo arrives asynchronously and disable() may get there
+            // first, so do not touch a destroyed actor.
+            ch.ensureArt(() => {
+                if (!this._destroyed) this.ch_pic.set_gicon(ch.getGicon());
+            });
         }
         // disconnectAll: function () {
         //     this.mixer.disconnect(this.stream_id);
@@ -628,12 +634,22 @@ export default class SomaFMRadioExtension extends Extension {
         cancellable = new Gio.Cancellable();
         Channels.setCancellable(cancellable);
 
+        // Every saved setting is needed to build the menus, and reading them
+        // must not block the shell, so the panel goes up in the callback. The
+        // cancellable is captured because disable() clears the global one.
+        const token = cancellable;
+        Data.load(token, () => {
+            if (!token.is_cancelled()) this._build();
+        });
+    }
+
+    _build() {
         favs = Data.getFavs();
         if (favs == null) favs = [];
         genre = Data.getGenre() ?? "";
 
-        // Built from the bundled list: enable() waits on neither the disk nor
-        // the network.
+        // Built from the bundled list: this waits on neither the disk nor the
+        // network.
         player = new Radio.RadioPlayer(
             Channels.getChannelById(Data.getLastChannelId()),
             Data.getQuality(),
@@ -659,9 +675,11 @@ export default class SomaFMRadioExtension extends Extension {
         Channels.reset();
         Data.invalidate();
 
-        player.destroy();
-        popup.destroy();
-        button.destroy();
+        // disable() can land before the prefs read came back, so there may be
+        // nothing built yet.
+        player?.destroy();
+        popup?.destroy();
+        button?.destroy();
         favs = null;
         button = null;
         popup = null;
