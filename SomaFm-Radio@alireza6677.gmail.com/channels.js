@@ -108,13 +108,14 @@ function bundledList() {
 let descriptors = null;
 let built = null;
 
+// enable() must not touch the disk, so the first build is always the bundled
+// list; the cached and live lists both arrive later through setChannelList().
+// The bundled list carries no `qualities` or genres, so streams.js keeps
+// assuming the usual four tiers and the genre menu stays empty until then.
 function ensureDescriptors() {
     if (descriptors != null) return descriptors;
 
-    const cached = Api.readCache();
-    descriptors = cached != null ? cached.channels : bundledList();
-    // The bundled list carries no `qualities`, so streams.js keeps assuming
-    // the usual four tiers until a fetch lands.
+    descriptors = bundledList();
     Streams.registerQualities(descriptors);
     return descriptors;
 }
@@ -245,7 +246,13 @@ export function getGenres() {
 // has stopped using.
 export function getChannelsByGenre(tag) {
     if (tag == null || tag === "") return buildAll();
-    return buildAll().filter((ch) => ch.hasGenre(tag));
+
+    const all = buildAll();
+    // The bundled list carries no genres, so a saved filter would blank the
+    // menu until the cached or live list arrives.
+    if (all.every((ch) => ch.getGenres().length === 0)) return all;
+
+    return all.filter((ch) => ch.hasGenre(tag));
 }
 
 export function getFavChannels() {

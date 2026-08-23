@@ -204,11 +204,15 @@ export const RadioPlayer = class RadioPlayer {
         this.setChannel(Channels.neighbour(this.channel.getId(), -1));
     }
 
+    // Only resumes if something was already playing, like setQuality(): both
+    // call sites stop() first and play() afterwards, and a channel restored at
+    // startup must not start the radio by itself.
     setChannel(ch) {
+        const wasPlaying = this.playing;
         this.channel = ch;
-        // The HLS tiers exist for one channel only, so the selected quality
-        // may not be available here. coerceQuality() degrades it instead of
-        // building a URL that would 404.
+        // Channels serve different bitrates and the HLS tiers exist for one
+        // channel only, so the selected quality may not be available here.
+        // coerceQuality() degrades it instead of building a URL that would 404.
         this.quality = Streams.coerceQuality(
             ch.getId(),
             this.quality,
@@ -217,7 +221,7 @@ export const RadioPlayer = class RadioPlayer {
         this.hostIndex = 0;
         this.stop();
         this.playbin.set_property("uri", this._uri());
-        this.play();
+        if (wasPlaying) this.play();
     }
 
     getChannel() {

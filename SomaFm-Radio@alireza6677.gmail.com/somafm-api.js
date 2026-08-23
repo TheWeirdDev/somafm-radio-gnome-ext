@@ -5,7 +5,7 @@
 
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
-import Soup from "gi://Soup?version=3.0";
+import Soup from "gi://Soup";
 
 import * as Streams from "./streams.js";
 
@@ -88,28 +88,40 @@ function parseChannels(text) {
     return channels;
 }
 
-export function readCache() {
-    const path = GLib.build_filenamev([cacheDir(), CACHE_FILE]);
-    try {
-        const file = Gio.file_new_for_path(path);
-        if (!file.query_exists(null)) return null;
-
-        const [ok, bytes] = file.load_contents(null);
-        if (!ok) return null;
-
-        const cached = JSON.parse(new TextDecoder().decode(bytes));
-        if (cached?.version !== CACHE_VERSION) return null;
-        if (!Array.isArray(cached.channels) || cached.channels.length === 0)
-            return null;
-
-        return {
-            fetchedAt: Number(cached.fetchedAt) || 0,
-            channels: cached.channels,
-        };
-    } catch (e) {
-        console.error(`SomaFM: cannot read channel cache: ${e}`);
+function parseCache(bytes) {
+    const cached = JSON.parse(new TextDecoder().decode(bytes));
+    if (cached?.version !== CACHE_VERSION) return null;
+    if (!Array.isArray(cached.channels) || cached.channels.length === 0)
         return null;
-    }
+
+    return {
+        fetchedAt: Number(cached.fetchedAt) || 0,
+        channels: cached.channels,
+    };
+}
+
+// onDone(cache | null). Reading the cache off the disk must not block the
+// shell, so callers render the bundled list first and swap this in when it
+// arrives -- the same way they already handle the live list.
+export function readCache(cancellable, onDone) {
+    const path = GLib.build_filenamev([cacheDir(), CACHE_FILE]);
+
+    Gio.file_new_for_path(path).load_contents_async(cancellable, (self, res) => {
+        let cache = null;
+        try {
+            const [ok, bytes] = self.load_contents_finish(res);
+            if (ok) cache = parseCache(bytes);
+        } catch (e) {
+            // A missing cache is the normal first-run case, not an error.
+            if (
+                !e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND) &&
+                !e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)
+            )
+                console.error(`SomaFM: cannot read channel cache: ${e}`);
+            cache = null;
+        }
+        onDone(cache);
+    });
 }
 
 export function isFresh(cache) {
@@ -127,17 +139,20 @@ function writeCache(channels) {
         fetchedAt: GLib.DateTime.new_now_utc().to_unix(),
         channels,
     });
-    try {
-        Gio.file_new_for_path(path).replace_contents(
-            new TextEncoder().encode(payload),
-            null,
-            false,
-            Gio.FileCreateFlags.REPLACE_DESTINATION,
-            null,
-        );
-    } catch (e) {
-        console.error(`SomaFM: cannot write channel cache: ${e}`);
-    }
+    Gio.file_new_for_path(path).replace_contents_async(
+        new TextEncoder().encode(payload),
+        null,
+        false,
+        Gio.FileCreateFlags.REPLACE_DESTINATION,
+        null,
+        (self, res) => {
+            try {
+                self.replace_contents_finish(res);
+            } catch (e) {
+                console.error(`SomaFM: cannot write channel cache: ${e}`);
+            }
+        },
+    );
 }
 
 // onDone(channels | null). Never throws; a failed fetch just reports null and
@@ -209,14 +224,24 @@ export function fetchArt(id, url, cancellable, onDone) {
                 if (data == null || data.length === 0)
                     throw new Error("empty body");
 
-                Gio.file_new_for_path(artPath(id)).replace_contents(
+                Gio.file_new_for_path(artPath(id)).replace_contents_async(
                     data,
                     null,
                     false,
                     Gio.FileCreateFlags.REPLACE_DESTINATION,
                     null,
+                    (file, r) => {
+                        try {
+                            file.replace_contents_finish(r);
+                            onDone(artPath(id));
+                        } catch (e2) {
+                            console.error(
+                                `SomaFM: cannot cache artwork for ${id}: ${e2}`,
+                            );
+                            onDone(null);
+                        }
+                    },
                 );
-                onDone(artPath(id));
             } catch (e) {
                 if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED))
                     console.error(`SomaFM: artwork fetch failed for ${id}: ${e}`);

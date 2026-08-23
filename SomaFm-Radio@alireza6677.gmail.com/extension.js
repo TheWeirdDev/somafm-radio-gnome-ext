@@ -321,22 +321,28 @@ const SomaFMPopup = GObject.registerClass(
             this.desc.set_text("Soma FM");
         }
 
+        // Everything that follows the current channel but says nothing about
+        // playback, so a channel restored at startup can use it too.
+        refreshChannel() {
+            const ch = this.player.getChannel();
+            this.ch.set_text(ch.getName());
+            this.setChannelIcon();
+            this.star.set_icon_name(
+                ch.isFav() ? "starred-symbolic" : "non-starred-symbolic",
+            );
+            // The tiers on offer depend on the channel, and setChannel() may
+            // have degraded the active quality.
+            rebuildQualityMenu();
+        }
+
         channelChanged() {
             this.controlbtns.icon.set_icon_name("media-playback-stop-symbolic");
             this.controlbtns.playing = true;
             this.setLoading(false);
             this.setLoading(true);
             this.setNotice(null);
-            this.ch.set_text(this.player.getChannel().getName());
             this.desc.set_text("Soma FM");
-            this.setChannelIcon();
-            this.cfav = this.player.getChannel().isFav();
-            this.star.set_icon_name(
-                this.cfav ? "starred-symbolic" : "non-starred-symbolic",
-            );
-            // The available HLS tiers depend on the channel, and setChannel()
-            // may have degraded the active quality.
-            rebuildQualityMenu();
+            this.refreshChannel();
             Data.save(
                 this.player.getChannel(),
                 this.volume,
@@ -580,15 +586,33 @@ function setQuality(id) {
     }
 }
 
-// The live list can rename, add or drop channels, so every menu that shows one
-// has to be rebuilt together.
+// enable() only has the bundled list to work with, so a saved channel that
+// SomaFM added later cannot be selected until the cached or live list lands.
+function restoreSavedChannel() {
+    if (player == null || popup == null || player.isPlaying()) return;
+
+    const wanted = Data.getLastChannelId();
+    if (player.getChannel().getId() === wanted) return;
+
+    const ch = Channels.getChannelById(wanted);
+    if (ch.getId() !== wanted) return; // not on offer after all
+
+    player.setChannel(ch);
+    popup.refreshChannel();
+}
+
+// Both the cache and the live fetch land here. The list can rename, add or drop
+// channels, so every menu that shows one has to be rebuilt together.
 function onChannelListFetched(list) {
+    // A read or fetch can land after disable() has torn everything down.
+    if (player == null) return;
     if (list == null || !Channels.setChannelList(list)) return;
 
     reloadChannelsMenu();
     reloadFavsMenu();
     rebuildGenreMenu();
     rebuildQualityMenu();
+    restoreSavedChannel();
 
     // SomaFM retires stations; the saved one may be gone. Playback is left
     // alone rather than silently switched, but say so in the log.
@@ -608,8 +632,8 @@ export default class SomaFMRadioExtension extends Extension {
         if (favs == null) favs = [];
         genre = Data.getGenre() ?? "";
 
-        // Built from the on-disk cache (or the bundled list) so enable() never
-        // waits on the network.
+        // Built from the bundled list: enable() waits on neither the disk nor
+        // the network.
         player = new Radio.RadioPlayer(
             Channels.getChannelById(Data.getLastChannelId()),
             Data.getQuality(),
@@ -619,8 +643,12 @@ export default class SomaFMRadioExtension extends Extension {
         button = new SomaFMPanelButton(player);
         Main.panel.addToStatusArea("somafm", button);
 
-        if (!Api.isFresh(Api.readCache()))
-            Api.fetchChannels(cancellable, onChannelListFetched);
+        // The cache arrives first and cheaply; the network only if it is stale.
+        Api.readCache(cancellable, (cache) => {
+            if (cache != null) onChannelListFetched(cache.channels);
+            if (!Api.isFresh(cache))
+                Api.fetchChannels(cancellable, onChannelListFetched);
+        });
     }
 
     disable() {
