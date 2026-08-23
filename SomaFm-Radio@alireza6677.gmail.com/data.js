@@ -1,9 +1,7 @@
 import Gio from "gi://Gio";
 import GLib from "gi://GLib";
-import Shell from "gi://Shell";
 
 import { DEFAULT_QUALITY } from "./streams.js";
-import { extPath } from "./extension.js";
 
 const FILE_NAME = "prefs.json";
 const DIR_NAME = ".somafm-radio";
@@ -68,11 +66,22 @@ const DEFAULTS = {
 };
 
 // prefs used to be re-read from disk by every getter, which meant one file read
-// per channel while building the menus. Cache it and write through on save().
+// per channel while building the menus. Now the file is read once, off the main
+// loop, and every getter answers from this snapshot.
 let cache = null;
 
+// Saves are frequent -- the volume slider writes on every step -- so only one
+// write is ever in flight and a newer payload replaces a waiting one.
+let pending = null;
+let writing = false;
+let dirReady = false;
+
+function dirPath() {
+	return GLib.build_filenamev([GLib.get_home_dir(), DIR_NAME]);
+}
+
 function filePath() {
-	return GLib.get_home_dir() + "/" + DIR_NAME + "/" + FILE_NAME;
+	return GLib.build_filenamev([dirPath(), FILE_NAME]);
 }
 
 function clampVol(value) {
@@ -121,35 +130,39 @@ function migrate(raw) {
 		`SomaFM: migrated prefs to schema v${SCHEMA_VERSION} ` +
 			`(channel ${migrated.lastChannel}, ${migrated.favs.length} favorites)`,
 	);
-	write(migrated);
+	queue(migrated);
 	return migrated;
 }
 
-export function load() {
-	if (cache != null) return cache;
-
-	create(GLib.get_home_dir() + "/" + DIR_NAME);
-
-	let content;
-	try {
-		content = Shell.get_file_contents_utf8_sync(filePath());
-	} catch (e) {
-		console.error("SomaFM: failed to load json: " + e);
-		cache = { ...DEFAULTS };
-		return cache;
+// Reads the prefs without blocking the shell, then calls onDone(). enable()
+// builds nothing until this lands, so no getter has to answer before the file
+// has been read.
+export function load(cancellable, onDone) {
+	if (cache != null) {
+		onDone();
+		return;
 	}
 
-	let raw;
-	try {
-		raw = JSON.parse(content);
-	} catch (e) {
-		console.error("SomaFM: Failed to parse json: " + e);
-		cache = { ...DEFAULTS };
-		return cache;
-	}
+	Gio.File.new_for_path(filePath()).load_contents_async(
+		cancellable,
+		(file, res) => {
+			let raw = null;
+			try {
+				const [ok, bytes] = file.load_contents_finish(res);
+				if (ok) raw = JSON.parse(new TextDecoder().decode(bytes));
+			} catch (e) {
+				// Having no file yet is the normal first run, not an error.
+				if (
+					!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND) &&
+					!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.CANCELLED)
+				)
+					console.error(`SomaFM: cannot read prefs: ${e}`);
+			}
 
-	cache = migrate(raw);
-	return cache;
+			cache = raw != null ? migrate(raw) : { ...DEFAULTS };
+			onDone();
+		},
+	);
 }
 
 // Called on disable() so a re-enable picks up any external edits.
@@ -157,83 +170,115 @@ export function invalidate() {
 	cache = null;
 }
 
+function current() {
+	return cache ?? DEFAULTS;
+}
+
 export function getLastChannelId() {
-	return load().lastChannel;
+	return current().lastChannel;
 }
 
 export function getLastVol() {
-	return load().lastVol;
+	return current().lastVol;
 }
 
 export function getQuality() {
-	return load().quality;
+	return current().quality;
 }
 
 export function getGenre() {
-	return load().genre;
+	return current().genre;
 }
 
 export function getFavs() {
-	return load().favs;
+	return current().favs;
 }
 
 export function isFav(id) {
 	return getFavs().indexOf(id) >= 0;
 }
 
-export function create(dir_path) {
-	let dir = Gio.file_new_for_path(dir_path);
-	let source_file = Gio.file_new_for_path(extPath).get_child(FILE_NAME);
-	if (!dir.query_exists(null)) {
-		try {
-			dir.make_directory(null);
-			let file = dir.get_child(FILE_NAME);
-			source_file.copy(file, Gio.FileCopyFlags.NONE, null, null);
-		} catch (e) {
-			console.error("SomaFM: Failed to create directory and/or file! " + e);
-		}
-	} else {
-		let file = dir.get_child(FILE_NAME);
-		if (!file.query_exists(null)) {
-			try {
-				source_file.copy(file, Gio.FileCopyFlags.NONE, null, null);
-			} catch (e) {
-				console.error("SomaFM: Failed to create file! " + e);
-			}
-		}
+// ~/.somafm-radio, created on the first save. make_directory_async() only
+// creates one level, which is all this needs.
+function ensureDir(onDone) {
+	if (dirReady) {
+		onDone();
+		return;
 	}
+
+	Gio.File.new_for_path(dirPath()).make_directory_async(
+		GLib.PRIORITY_DEFAULT,
+		null,
+		(dir, res) => {
+			try {
+				dir.make_directory_finish(res);
+			} catch (e) {
+				if (!e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.EXISTS))
+					console.error(`SomaFM: cannot create ${dirPath()}: ${e}`);
+			}
+			dirReady = true;
+			onDone();
+		},
+	);
 }
 
-function write(data) {
-	try {
-		let file = Gio.file_new_for_path(filePath());
-		let raw = file.replace(null, false, Gio.FileCreateFlags.NONE, null);
-		let out = Gio.BufferedOutputStream.new_sized(raw, 4096);
-		Shell.write_string_to_stream(out, JSON.stringify(data, null, 4));
-		out.close(null);
-	} catch (e) {
-		console.error("SomaFM: Failed to save prefs: " + e);
-	}
+function flush() {
+	if (writing || pending == null) return;
+
+	const payload = pending;
+	pending = null;
+	writing = true;
+
+	Gio.File.new_for_path(filePath()).replace_contents_async(
+		new TextEncoder().encode(payload),
+		null,
+		false,
+		Gio.FileCreateFlags.REPLACE_DESTINATION,
+		null,
+		(file, res) => {
+			writing = false;
+			try {
+				file.replace_contents_finish(res);
+			} catch (e) {
+				// First save of a fresh install: the directory is missing.
+				if (
+					!dirReady &&
+					e.matches?.(Gio.IOErrorEnum, Gio.IOErrorEnum.NOT_FOUND)
+				) {
+					pending ??= payload;
+					ensureDir(flush);
+					return;
+				}
+				console.error(`SomaFM: failed to save prefs: ${e}`);
+			}
+			dirReady = true;
+			flush();
+		},
+	);
+}
+
+function queue(data) {
+	pending = JSON.stringify(data, null, 4);
+	flush();
 }
 
 export function save(channel, lastVol, favs, quality) {
-	const current = load();
 	const data = {
 		schemaVersion: SCHEMA_VERSION,
-		lastChannel: channel ? channel.getId() : current.lastChannel,
-		favs: Array.isArray(favs) ? favs : current.favs,
+		lastChannel: channel ? channel.getId() : current().lastChannel,
+		favs: Array.isArray(favs) ? favs : current().favs,
 		lastVol: clampVol(lastVol),
-		quality: typeof quality === "string" ? quality : current.quality,
-		genre: current.genre,
+		quality: typeof quality === "string" ? quality : current().quality,
+		genre: current().genre,
 	};
 	cache = data;
-	write(data);
+	queue(data);
 }
 
 // The genre filter is the only setting not tied to playback, so it writes
 // through on its own rather than joining save()'s argument list.
 export function setGenre(tag) {
-	const data = { ...load(), genre: typeof tag === "string" ? tag : "" };
+	const data = { ...current(), genre: typeof tag === "string" ? tag : "" };
 	cache = data;
-	write(data);
+	queue(data);
 }
