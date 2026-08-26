@@ -368,6 +368,10 @@ const SomaFMPopup = GObject.registerClass(
         setVolume(slider, event) {
             this.player.setVolume(slider.value);
             this.volume = slider.value;
+            // Moving the slider has to lift a mute the icon set, or the
+            // pipeline stays silent while the slider shows a level: the volume
+            // and the mute flag are separate properties on the playbin.
+            this.player.setMute(slider.value === 0);
             this.setVolIcon(slider.value);
             Data.save(
                 this.player.getChannel(),
