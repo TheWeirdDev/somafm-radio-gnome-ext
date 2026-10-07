@@ -657,8 +657,12 @@ export default class SomaFMRadioExtension extends Extension {
         player = new Radio.RadioPlayer(
             Channels.getChannelById(Data.getLastChannelId()),
             Data.getQuality(),
+            this.path,
         );
         player.setVolume(Data.getLastVol());
+        // GStreamer lives in a helper process that only starts on the first
+        // play, so whether HLS works is learned late.
+        player.setOnCapabilities(rebuildQualityMenu);
 
         button = new SomaFMPanelButton(player);
         Main.panel.addToStatusArea("somafm", button);
