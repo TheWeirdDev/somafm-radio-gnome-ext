@@ -1,3 +1,4 @@
+#!@GJS@ -m
 // GStreamer worker for the panel extension. It runs as a separate gjs process:
 // GStreamer must never be initialised inside gnome-shell.
 //
