@@ -53,36 +53,35 @@ export const ControlButtons = GObject.registerClass(
             this.playing = false;
             this.pr = pr;
 
-            this.next.connect("button-press-event", () => {
+            this.next.connect("button-press-event", () => this.skip(1));
+            this.prev.connect("button-press-event", () => this.skip(-1));
+            this.icon.connect("button-press-event", () => this.toggle());
+        }
+
+        // Also driven by the media keys, through MPRIS.
+        skip(direction) {
+            this.player.stop();
+            if (direction > 0) this.player.next();
+            else this.player.prev();
+            this.player.play();
+            this.pr.channelChanged();
+        }
+
+        toggle() {
+            if (this.playing) {
                 this.player.stop();
-                this.player.next();
+                this.icon.set_icon_name("media-playback-start-symbolic");
+                this.pr.setLoading(false);
+                this.pr.desc.set_text("Soma FM");
+            } else {
                 this.player.play();
-                this.pr.channelChanged();
-            });
+                this.icon.set_icon_name("media-playback-stop-symbolic");
+                this.pr.setLoading(false);
+                this.pr.setLoading(true);
+                this.pr.setError(false);
+            }
 
-            this.prev.connect("button-press-event", () => {
-                this.player.stop();
-                this.player.prev();
-                this.player.play();
-                this.pr.channelChanged();
-            });
-
-            this.icon.connect("button-press-event", () => {
-                if (this.playing) {
-                    this.player.stop();
-                    this.icon.set_icon_name("media-playback-start-symbolic");
-                    this.pr.setLoading(false);
-                    this.pr.desc.set_text("Soma FM");
-                } else {
-                    this.player.play();
-                    this.icon.set_icon_name("media-playback-stop-symbolic");
-                    this.pr.setLoading(false);
-                    this.pr.setLoading(true);
-                    if (this.pr.err != null) this.pr.err.destroy();
-                }
-
-                this.playing = !this.playing;
-            });
+            this.playing = !this.playing;
         }
     },
 );
@@ -129,6 +128,7 @@ export const RadioPlayer = class RadioPlayer {
         this.onTagChanged = null;
         this.onQualityFallback = null;
         this.onCapabilities = null;
+        this.onStateChanged = null;
     }
 
     // Kills the worker. disable() used to leave the bus watch and its handler
@@ -138,6 +138,7 @@ export const RadioPlayer = class RadioPlayer {
         this.onTagChanged = null;
         this.onQualityFallback = null;
         this.onCapabilities = null;
+        this.onStateChanged = null;
 
         if (this.failId !== 0) {
             GLib.source_remove(this.failId);
@@ -168,6 +169,7 @@ export const RadioPlayer = class RadioPlayer {
             this.failId = GLib.idle_add(GLib.PRIORITY_DEFAULT, () => {
                 this.failId = 0;
                 this.playing = false;
+                this.onStateChanged?.();
                 this.onError?.();
                 return GLib.SOURCE_REMOVE;
             });
@@ -218,6 +220,7 @@ export const RadioPlayer = class RadioPlayer {
         this._dropHelper();
         this.playing = false;
         this.tag = "Soma FM";
+        this.onStateChanged?.();
         if (wasPlaying) this.onError?.();
     }
 
@@ -312,6 +315,7 @@ export const RadioPlayer = class RadioPlayer {
             case "tag":
                 this.tag = event.title;
                 if (this.onTagChanged != null) this.onTagChanged();
+                this.onStateChanged?.();
                 break;
 
             case "started":
@@ -373,6 +377,7 @@ export const RadioPlayer = class RadioPlayer {
     play() {
         this.playing = true;
         if (this._startHelper()) this._playUri(this._uri());
+        this.onStateChanged?.();
     }
 
     setOnError(onError) {
@@ -395,6 +400,12 @@ export const RadioPlayer = class RadioPlayer {
         this.onCapabilities = onCapabilities;
     }
 
+    // Called whenever whether it plays, what it plays or the current title
+    // may have changed.
+    setOnStateChanged(onStateChanged) {
+        this.onStateChanged = onStateChanged;
+    }
+
     setMute(mute) {
         this.muted = mute;
         this._send({ cmd: "mute", value: mute });
@@ -408,6 +419,7 @@ export const RadioPlayer = class RadioPlayer {
             this.gen++;
             this._send({ cmd: "stop", gen: this.gen });
         }
+        this.onStateChanged?.();
     }
 
     next() {

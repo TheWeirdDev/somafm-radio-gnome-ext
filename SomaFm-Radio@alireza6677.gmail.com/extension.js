@@ -19,12 +19,14 @@ import * as Radio from "./radio.js";
 import * as Data from "./data.js";
 import * as Streams from "./streams.js";
 import * as Api from "./somafm-api.js";
+import * as Mpris from "./mpris.js";
 
 // const Extension = imports.misc.extensionUtils.getCurrentExtension();
 
 let player;
 let button;
 let popup;
+let mpris;
 let favs;
 let fav_menu;
 let channels_menu;
@@ -359,7 +361,9 @@ const SomaFMPopup = GObject.registerClass(
             // The logo arrives asynchronously and disable() may get there
             // first, so do not touch a destroyed actor.
             ch.ensureArt(() => {
-                if (!this._destroyed) this.ch_pic.set_gicon(ch.getGicon());
+                if (this._destroyed) return;
+                this.ch_pic.set_gicon(ch.getGicon());
+                mpris?.update();
             });
         }
         // disconnectAll: function () {
@@ -667,6 +671,10 @@ export default class SomaFMRadioExtension extends Extension {
         button = new SomaFMPanelButton(player);
         Main.panel.addToStatusArea("somafm", button);
 
+        // Lets the keyboard's media keys drive the radio.
+        mpris = new Mpris.MprisPlayer(player, popup.controlbtns);
+        player.setOnStateChanged(() => mpris?.update());
+
         // The cache arrives first and cheaply; the network only if it is stale.
         Api.readCache(cancellable, (cache) => {
             if (cache != null) onChannelListFetched(cache.channels);
@@ -685,6 +693,8 @@ export default class SomaFMRadioExtension extends Extension {
 
         // disable() can land before the prefs read came back, so there may be
         // nothing built yet.
+        mpris?.destroy();
+        mpris = null;
         player?.destroy();
         popup?.destroy();
         button?.destroy();
