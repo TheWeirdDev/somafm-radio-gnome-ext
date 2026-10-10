@@ -38,6 +38,9 @@ let quality_items = [];
 let cancellable;
 export let extPath;
 
+// The panel icon's opacity (of 255) while the radio is stopped.
+const STOPPED_OPACITY = 128;
+
 // Selecting a quality must not close the panel, the way selecting a channel
 // does not: PopupMenu closes the whole menu as soon as an item emits
 // "activate", so the handler runs here instead of via super.activate().
@@ -407,11 +410,12 @@ const SomaFMPanelButton = GObject.registerClass(
             let box = new St.BoxLayout({
                 style_class: "panel-status-menu-box",
             });
-            let icon = new St.Icon({
+            this.icon = new St.Icon({
                 gicon: Gio.icon_new_for_string(extPath + "/radio-symbolic.svg"),
                 style_class: "system-status-icon",
+                opacity: STOPPED_OPACITY,
             });
-            box.add_child(icon);
+            box.add_child(this.icon);
             this.add_child(box);
             this.add_style_class_name("panel-status-button");
 
@@ -442,6 +446,11 @@ const SomaFMPanelButton = GObject.registerClass(
             this.menu.addMenuItem(quality_menu);
 
             rebuildQualityMenu();
+        }
+
+        // Dimmed means stopped, not disabled: the menu still works.
+        setPlaying(playing) {
+            this.icon.opacity = playing ? 255 : STOPPED_OPACITY;
         }
     },
 );
@@ -673,7 +682,10 @@ export default class SomaFMRadioExtension extends Extension {
 
         // Lets the keyboard's media keys drive the radio.
         mpris = new Mpris.MprisPlayer(player, popup.controlbtns);
-        player.setOnStateChanged(() => mpris?.update());
+        player.setOnStateChanged(() => {
+            button?.setPlaying(player.isPlaying());
+            mpris?.update();
+        });
 
         // The cache arrives first and cheaply; the network only if it is stale.
         Api.readCache(cancellable, (cache) => {
