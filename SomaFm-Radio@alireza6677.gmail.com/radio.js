@@ -9,6 +9,7 @@ import Clutter from "gi://Clutter";
 
 import * as Channels from "./channels.js";
 import * as Streams from "./streams.js";
+import { boxOrientation } from "./compat.js";
 
 const DEFAULT_VOLUME = 0.5;
 const HELPER_FILE = "player-helper.js";
@@ -20,7 +21,7 @@ export const ControlButtons = GObject.registerClass(
     class ControlButtons extends St.BoxLayout {
         _init(player, pr) {
             super._init({
-                vertical: false,
+                ...boxOrientation(false),
                 x_align: Clutter.ActorAlign.CENTER,
                 x_expand: true,
             });

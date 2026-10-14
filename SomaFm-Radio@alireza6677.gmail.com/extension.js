@@ -20,6 +20,7 @@ import * as Data from "./data.js";
 import * as Streams from "./streams.js";
 import * as Api from "./somafm-api.js";
 import * as Mpris from "./mpris.js";
+import { boxOrientation } from "./compat.js";
 
 // const Extension = imports.misc.extensionUtils.getCurrentExtension();
 
@@ -95,15 +96,15 @@ const SomaFMPopup = GObject.registerClass(
             this.player = player;
 
             this.box = new St.BoxLayout({
-                vertical: true,
+                ...boxOrientation(true),
                 width: 250,
             });
             this.volBox = new St.BoxLayout({
-                vertical: false,
+                ...boxOrientation(false),
                 width: 250,
             });
             this.loadingBox = new St.BoxLayout({
-                vertical: false,
+                ...boxOrientation(false),
                 x_align: Clutter.ActorAlign.CENTER,
                 style_class: 'somafm-popup-loading-box',
             });

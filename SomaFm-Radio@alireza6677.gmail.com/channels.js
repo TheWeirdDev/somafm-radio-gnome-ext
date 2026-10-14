@@ -8,6 +8,7 @@ import * as PopupMenu from "resource:///org/gnome/shell/ui/popupMenu.js";
 import * as Data from "./data.js";
 import * as Api from "./somafm-api.js";
 import * as Streams from "./streams.js";
+import { boxOrientation } from "./compat.js";
 import { extPath } from "./extension.js";
 
 const FALLBACK_ICON = "audio-x-generic-symbolic";
@@ -290,7 +291,7 @@ export const ChannelBox = GObject.registerClass(
             this.channel = channel;
             this.popup = popup;
 
-            this.vbox = new St.BoxLayout({ vertical: false });
+            this.vbox = new St.BoxLayout(boxOrientation(false));
             this.add_child(this.vbox);
 
             let icon2 = new St.Icon({
@@ -299,7 +300,7 @@ export const ChannelBox = GObject.registerClass(
                 icon_size: 60,
             });
 
-            let box2 = new St.BoxLayout({ vertical: false });
+            let box2 = new St.BoxLayout(boxOrientation(false));
             let label1 = new St.Label({
                 text: channel.getName(),
                 y_align: Clutter.ActorAlign.CENTER,
